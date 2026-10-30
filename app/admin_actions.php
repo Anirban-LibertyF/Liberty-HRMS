@@ -15,6 +15,72 @@ $note = mb_substr(trim((string)($_POST['note'] ?? '')), 0, 300);
 $id = (int)($_POST['id'] ?? 0);
 
 switch ($do) {
+    case 'admin_support_save':
+        if (!$isAdmin) done(false, 'Only the administrator can edit the support page.', 'support.php');
+        $defaults = support_defaults(); $limits = ['help_email' => 200, 'help_phone' => 60, 'help_hours' => 120, 'hr_email' => 200, 'dir_quote' => 600, 'dir_name' => 100, 'dir_org' => 100];
+        foreach ($limits as $k => $max) support_set($k, mb_substr(trim((string)($_POST[$k] ?? $defaults[$k])), 0, $max));
+        $old = support_settings()['dir_photo'];
+        $up = $_FILES['dir_photo'] ?? null;
+        if ($up && ($up['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            $new = store_profile_photo($up, 0);
+            support_set('dir_photo', $new);
+            if ($old) @unlink(cfg('upload_dir') . '/' . $old);
+        } elseif (isset($_POST['remove_photo']) && $old) {
+            support_set('dir_photo', '');
+            @unlink(cfg('upload_dir') . '/' . $old);
+        }
+        done(true, 'Support page updated.', 'support.php');
+
+    case 'admin_faq_save':
+        if (!$isAdmin) done(false, 'Only the administrator can edit the support page.', 'support.php');
+        $qn = mb_substr(trim((string)($_POST['question'] ?? '')), 0, 300); $an = mb_substr(trim((string)($_POST['answer'] ?? '')), 0, 3000);
+        if ($qn === '' || $an === '') done(false, 'Both the question and the answer are required.', 'support.php#faq-edit');
+        $ord = (int)($_POST['sort_order'] ?? 0);
+        if ($id) { q('UPDATE support_faqs SET question=?, answer=?, sort_order=? WHERE id=?', [$qn, $an, $ord, $id]); done(true, 'Answer updated.', 'support.php#faq-edit'); }
+        q('INSERT INTO support_faqs (question, answer, sort_order) VALUES (?,?,?)', [$qn, $an, $ord ?: ((int)q_val('SELECT MAX(sort_order) FROM support_faqs') + 1)]);
+        done(true, 'Answer added.', 'support.php#faq-edit');
+
+    case 'admin_faq_delete':
+        if (!$isAdmin) done(false, 'Only the administrator can edit the support page.', 'support.php');
+        q('DELETE FROM support_faqs WHERE id=?', [$id]);
+        done(true, 'Answer deleted.', 'support.php#faq-edit');
+
+    case 'admin_doc_upload':
+        if (!$isAdmin) done(false, 'Only the administrator can manage documents.', $back);
+        $title = mb_substr(trim((string)($_POST['title'] ?? '')), 0, 200);
+        $cat = mb_substr(trim((string)($_POST['category'] ?? 'General')), 0, 60) ?: 'General';
+        if ($title === '') done(false, 'Give the document a title.', $back);
+        $targets = [null];                                                 // null = company-wide
+        if (($_POST['audience'] ?? 'all') === 'some') {
+            $rid = array_values(array_unique(array_map('intval', (array)($_POST['recipients'] ?? []))));
+            $targets = $rid ? array_map('intval', array_column(q_all('SELECT id FROM users WHERE role<>"admin" AND status="active" AND id IN (' . implode(',', array_fill(0, count($rid), '?')) . ')', $rid), 'id')) : [];
+            if (!$targets) done(false, 'Choose at least one employee, or share with all employees.', $back);
+        }
+        $up = $_FILES['file'] ?? ['error' => UPLOAD_ERR_NO_FILE];
+        if (($up['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) done(false, 'Choose a file to upload.', $back);
+        project_check_file($up);
+        $copies = []; $first = null;
+        try {
+            foreach ($targets as $t) {
+                if ($first === null) { [$fname, $fpath] = project_store_file($up, $t ?? 0, 'docs'); $first = $fpath; $copies[] = [$t, $fpath]; continue; }
+                $dir = cfg('upload_dir') . "/docs/$t"; if (!is_dir($dir) && !mkdir($dir, 0775, true)) throw new RuntimeException('Could not create the documents folder.');
+                $rel = "docs/$t/" . bin2hex(random_bytes(12)) . '.' . pathinfo($first, PATHINFO_EXTENSION);
+                if (!copy(cfg('upload_dir') . '/' . $first, cfg('upload_dir') . '/' . $rel)) throw new RuntimeException('Could not save the file.');
+                $copies[] = [$t, $rel];
+            }
+            foreach ($copies as [$t, $rel]) q('INSERT INTO documents (user_id, title, category, file_name, file_path, uploaded_by, uploaded_at) VALUES (?,?,?,?,?,?,NOW())', [$t, $title, $cat, $fname, $rel, $user['id']]);
+        } catch (Throwable $ex) { foreach ($copies as [, $rel]) @unlink(cfg('upload_dir') . '/' . $rel); throw $ex; }
+        foreach (($targets === [null] ? array_column(q_all('SELECT id FROM users WHERE role<>"admin" AND status="active"'), 'id') : $targets) as $nid) notify((int)$nid, "New document: $title", 'documents.php');
+        done(true, 'Document uploaded' . ($targets === [null] ? ' for all employees.' : ' for ' . count($targets) . ' employee' . (count($targets) === 1 ? '' : 's') . '.'), $back);
+
+    case 'admin_doc_delete':
+        if (!$isAdmin) done(false, 'Only the administrator can manage documents.', $back);
+        $d = q_one('SELECT * FROM documents WHERE id=?', [$id]);
+        if (!$d) done(false, 'Document not found.', $back);
+        q('DELETE FROM documents WHERE id=?', [$id]);
+        @unlink(cfg('upload_dir') . '/' . $d['file_path']);
+        done(true, 'Document deleted.', $back);
+
     case 'admin_leave_review':
         $lr = q_one('SELECT lr.*, lt.name AS type_name FROM leave_requests lr JOIN leave_types lt ON lt.id=lr.leave_type_id WHERE lr.id=? AND lr.status="pending"', [$id]);
         if (!$lr) done(false, 'Request not found or already reviewed.', $back);
@@ -82,6 +148,10 @@ switch ($do) {
         $letter = true;
         try { create_offer_letter($newId); notify($newId, 'Your offer letter is available under Documents.', 'documents.php'); }
         catch (Throwable $ex) { error_log('Offer letter failed: ' . $ex->getMessage()); $letter = false; }
+        try { create_joining_letter($newId); }
+        catch (Throwable $ex) { error_log('Joining letter failed: ' . $ex->getMessage()); }
+        try { create_nda_letter($newId); notify($newId, 'Your NDA is available under Documents. Please sign and upload it.', 'documents.php'); }
+        catch (Throwable $ex) { error_log('NDA letter failed: ' . $ex->getMessage()); }
         done(true, "Employee created. Employee ID: $code — they can sign in with $code or {$fields['email']}."
             . ($letter ? ' An offer letter was added to their Documents.' : ' The offer letter could not be generated; use "Regenerate offer letter" on this page.'), "admin_employee.php?id=$newId");
 
@@ -90,6 +160,17 @@ switch ($do) {
         create_offer_letter($id);
         notify($id, 'Your offer letter is available under Documents.', 'documents.php');
         done(true, "Offer letter regenerated and added to the employee's Documents.", $back);
+
+    case 'admin_ndaletter_regen':
+        if (!q_val('SELECT COUNT(*) FROM users WHERE id=? AND role <> "admin"', [$id])) done(false, 'Employee not found.', $back);
+        create_nda_letter($id);
+        notify($id, 'Your NDA is available under Documents. Please sign and upload it.', 'documents.php');
+        done(true, "NDA letter regenerated and added to the employee's Documents.", $back);
+
+    case 'admin_joiningletter_regen':
+        if (!q_val('SELECT COUNT(*) FROM users WHERE id=? AND role <> "admin"', [$id])) done(false, 'Employee not found.', $back);
+        create_joining_letter($id);
+        done(true, "Joining letter regenerated and added to the employee's Documents.", $back);
 
     case 'admin_attendance_save':
         $emp = q_one('SELECT u.*, s.name AS shift_name, s.start_time, s.end_time, s.required_min, s.break_allow_min, s.grace_min FROM users u JOIN shifts s ON s.id=u.shift_id WHERE u.id=? AND u.role <> "admin"', [(int)($_POST['user_id'] ?? 0)]);
@@ -166,12 +247,24 @@ switch ($do) {
         done(true, 'Holiday removed.', $back);
 
     case 'admin_announce_add':
+    case 'admin_announce_edit':
+        if (!$isAdmin) done(false, 'Only the administrator can manage announcements.', $back);
         $t = trim((string)($_POST['title'] ?? '')); $b = trim((string)($_POST['body'] ?? ''));
         if ($t === '' || $b === '') done(false, 'Title and message are required.', $back);
-        q('INSERT INTO announcements (dept, title, body, posted_on, created_by) VALUES (?,?,?,CURDATE(),?)', [mb_substr(trim((string)($_POST['dept'] ?? 'HR')), 0, 60), mb_substr($t, 0, 200), mb_substr($b, 0, 1000), $user['id']]);
-        foreach (q_all('SELECT id FROM users WHERE status="active"') as $r) notify((int)$r['id'], 'New announcement: ' . mb_substr($t, 0, 80), 'index.php');
-        done(true, 'Announcement published.', $back);
+        $dept = mb_substr(trim((string)($_POST['dept'] ?? 'HR')), 0, 60); $t = mb_substr($t, 0, 200); $b = mb_substr($b, 0, 1000);
+        if ($do === 'admin_announce_edit') {
+            if (!q_val('SELECT COUNT(*) FROM announcements WHERE id=?', [$id])) done(false, 'Announcement not found.', $back);
+            q('UPDATE announcements SET dept=?, title=?, body=?, updated_at=NOW() WHERE id=?', [$dept, $t, $b, $id]);
+            $prefix = 'Announcement updated: ';
+        } else {
+            q('INSERT INTO announcements (dept, title, body, posted_on, created_by) VALUES (?,?,?,CURDATE(),?)', [$dept, $t, $b, $user['id']]);
+            $id = (int)db()->lastInsertId();
+            $prefix = 'New announcement: ';
+        }
+        foreach (q_all('SELECT id, role FROM users WHERE status="active" AND id<>?', [$user['id']]) as $r) notify((int)$r['id'], $prefix . mb_substr($t, 0, 80), $r['role'] === 'admin' ? 'admin.php?tab=announce' : "notices.php#notice-$id");
+        done(true, $do === 'admin_announce_edit' ? 'Announcement updated and employees notified.' : 'Announcement published.', $back);
     case 'admin_announce_delete':
+        if (!$isAdmin) done(false, 'Only the administrator can manage announcements.', $back);
         q('DELETE FROM announcements WHERE id=?', [$id]);
         done(true, 'Announcement deleted.', $back);
 

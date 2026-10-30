@@ -132,7 +132,7 @@ function require_login(): array
     }
     // The administrator only uses the admin area; employee pages bounce back to it.
     $page = basename($_SERVER['SCRIPT_NAME'] ?? '');
-    if ($u['role'] === 'admin' && !str_starts_with($page, 'admin') && !in_array($page, ['actions.php', 'download.php', 'logout.php', 'profile_photo.php', 'support.php'], true)) redirect('admin.php');
+    if ($u['role'] === 'admin' && !str_starts_with($page, 'admin') && !in_array($page, ['actions.php', 'download.php', 'logout.php', 'profile_photo.php', 'support.php', 'projects.php', 'project.php', 'expenses.php', 'expense.php', 'expense_print.php', 'notes.php', 'note.php'], true)) redirect('admin.php');
     return $u;
 }
 

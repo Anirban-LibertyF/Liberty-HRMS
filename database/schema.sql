@@ -1,6 +1,6 @@
 -- Liberty Office schema (MySQL / MariaDB)
 SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS activity_log, notifications, documents, payslips, announcements, work_logs,
+DROP TABLE IF EXISTS note_shares, support_faqs, site_settings, note_files, notes, expense_items, expenses, project_files, project_members, projects, activity_log, notifications, documents, payslips, announcements, work_logs,
   week_offs, leave_requests, leave_types, holidays, regularizations, attendance, punch_events, users, shifts;
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -167,7 +167,8 @@ CREATE TABLE announcements (
   title VARCHAR(200) NOT NULL,
   body TEXT NOT NULL,
   posted_on DATE NOT NULL,
-  created_by INT NULL
+  created_by INT NULL,
+  updated_at DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE payslips (
@@ -221,5 +222,115 @@ CREATE TABLE activity_log (
   detail VARCHAR(300) NOT NULL DEFAULT '',
   created_at DATETIME NOT NULL,
   INDEX (user_id, created_at),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE projects (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(160) NOT NULL,
+  short_details VARCHAR(300) NOT NULL DEFAULT '',
+  tech_stack VARCHAR(300) NOT NULL DEFAULT '',
+  github_url VARCHAR(500) NOT NULL DEFAULT '',
+  figma_url VARCHAR(500) NOT NULL DEFAULT '',
+  description TEXT NULL,
+  progress TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  notes TEXT NULL,
+  secrets TEXT NULL,
+  created_by INT NOT NULL,
+  updated_by INT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NULL,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE project_members (
+  project_id INT NOT NULL,
+  user_id INT NOT NULL,
+  status ENUM('pending','accepted','rejected') NOT NULL DEFAULT 'pending',
+  invited_by INT NULL,
+  responded_at DATETIME NULL,
+  PRIMARY KEY (project_id, user_id),
+  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE project_files (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  project_id INT NOT NULL,
+  file_name VARCHAR(200) NOT NULL,
+  file_path VARCHAR(300) NOT NULL,
+  uploaded_by INT NULL,
+  uploaded_at DATETIME NOT NULL,
+  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE expenses (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(200) NOT NULL,
+  expense_date DATE NOT NULL,
+  total DECIMAL(14,2) NOT NULL DEFAULT 0,
+  created_by INT NOT NULL,
+  updated_by INT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NULL,
+  INDEX (expense_date),
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE expense_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  expense_id INT NOT NULL,
+  sl INT NOT NULL,
+  item_name VARCHAR(200) NOT NULL,
+  quantity DECIMAL(10,2) NOT NULL,
+  price DECIMAL(12,2) NOT NULL,
+  amount DECIMAL(14,2) NOT NULL,
+  FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE notes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  note_date DATE NOT NULL,
+  body MEDIUMTEXT NULL,
+  admin_access TINYINT(1) NOT NULL DEFAULT 0,
+  share_all TINYINT(1) NOT NULL DEFAULT 0,
+  updated_by INT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NULL,
+  INDEX (user_id, note_date),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE note_files (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  note_id INT NOT NULL,
+  file_name VARCHAR(200) NOT NULL,
+  file_path VARCHAR(300) NOT NULL,
+  uploaded_at DATETIME NOT NULL,
+  FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE site_settings (
+  k VARCHAR(60) PRIMARY KEY,
+  v TEXT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE support_faqs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  question VARCHAR(300) NOT NULL,
+  answer TEXT NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE note_shares (
+  note_id INT NOT NULL,
+  user_id INT NOT NULL,
+  PRIMARY KEY (note_id, user_id),
+  FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

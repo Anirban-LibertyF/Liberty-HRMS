@@ -49,8 +49,8 @@ render_header('Dashboard', 'dashboard', $user);
 <?php endif; ?>
 
 <div class="page-head welcome">
-  <div><h1>Welcome back, <?= e(explode(' ', $user['name'])[0]) ?></h1>
-  <p class="muted"><?= date('l, F j, Y') ?> • <?= e($user['department']) ?> • <?= e($user['team']) ?></p></div>
+  <div><h1>Welcome, <?= e(explode(' ', $user['name'])[0]) ?></h1>
+  <p class="muted"><?= date('l, F j, Y') ?><?= $user['team'] !== '' ? ' • ' . e($user['team']) : '' ?></p></div>
 </div>
 
 <div class="grid g-2-1">
@@ -63,18 +63,22 @@ render_header('Dashboard', 'dashboard', $user);
     <div class="timer-row" style="margin-top:8px">
       <div id="shiftTimer" class="timer" data-base="<?= $ts['live_total_sec'] ?>" data-running="<?= in_array($state, ['in', 'break'], true) ? 1 : 0 ?>">00h 00m 00s <small>overall today</small></div>
       <div class="punch-box">
-        <div><small class="eyebrow">First punch in</small><b><?= $ts['first_in'] ? e(date('h:i A', strtotime($ts['first_in']))) : '--:--' ?></b></div>
-        <div><small class="eyebrow">Expected out</small><b><?= $ts['expected_out'] ? date('h:i A', $ts['expected_out']) : '--:--' ?></b>
-          <?php if ($ts['expected_out'] && $state !== 'out'): $left = intdiv(max(0, $ts['expected_out'] - time()), 60); ?><small><?= $left ? sprintf('%02dh %02dm left', intdiv($left, 60), $left % 60) : 'Shift target reached' ?></small><?php endif; ?></div>
+        <div><small class="eyebrow">First punch in</small><b><?= $ts['first_in'] ? e(date('h:i A', strtotime($ts['first_in']))) : '--:--' ?></b>
+          <small>Expected <?= e(date('h:i A', strtotime(today() . ' ' . $user['start_time']))) ?></small></div>
+        <div><small class="eyebrow">Last punch out</small><b><?= $ts['last_out'] ? e(date('h:i A', strtotime($ts['last_out']))) : '--:--' ?></b>
+          <small>Expected <?= e(date('h:i A', $ts['expected_out'])) ?></small></div>
       </div>
     </div>
     <p class="muted" style="margin-top:12px;font-size:13px">↗ Target: <?= sprintf('%02dh %02dm', intdiv($required, 60), $required % 60) ?> daily requirement (<?= $pct ?>% completed)</p>
 
     <div class="punch-cta">
       <?php $working = $state === 'in' || $state === 'break'; ?>
+      <?php $dayDone = $state === 'out' && $user['role'] !== 'admin'; ?>
       <?php if ($weekoffToday): ?>
         <div class="weekoff-note"><?= icon('palm', 22) ?><div><b>Today is your week off</b><small>No punch-in needed. Changed your mind? You can cancel it.</small></div>
           <form method="post" action="actions.php"><?= csrf_field() ?><input type="hidden" name="do" value="weekoff_cancel"><input type="hidden" name="back" value="index.php"><button class="btn btn-sm">Cancel week off</button></form></div>
+      <?php elseif ($dayDone): ?>
+        <div class="weekoff-note"><?= icon('check', 22) ?><div><b>Today's punch in/out is complete</b><small>One punch in and punch out per day. Need a change? Contact your admin.</small></div></div>
       <?php else: ?>
       <form method="post" action="actions.php"><?= csrf_field() ?><input type="hidden" name="do" value="<?= $working ? 'punch_out' : 'punch_in' ?>"><input type="hidden" name="back" value="index.php">
         <?php if (!$working): ?><div class="loc-field"><label for="punchLoc">Location</label><input class="input" id="punchLoc" name="location" maxlength="120" value="Barrackpore Office" required placeholder="Where are you working from?"></div><?php endif; ?>
@@ -86,16 +90,16 @@ render_header('Dashboard', 'dashboard', $user);
       </form>
       <?php if ($state === 'none'): ?>
         <form method="post" action="actions.php" data-confirm="Mark today as your week off? You will not be able to punch in today unless you cancel it."><?= csrf_field() ?><input type="hidden" name="do" value="weekoff_mark"><input type="hidden" name="back" value="index.php">
-          <button class="btn btn-lg btn-block" <?= $woErr ? 'disabled' : '' ?>><?= icon('palm', 18) ?> Mark today as Week Off</button>
+          <button class="btn btn-lg btn-block btn-weekoff" <?= $woErr ? 'disabled' : '' ?>><?= icon('palm', 18) ?> Mark today as Week Off</button>
           <small class="muted" style="display:block;margin-top:6px"><?= $woErr ? e($woErr) : 'Week offs left this month: <b>' . $wb['left'] . '</b> of ' . $wb['total'] . ($wb['carry'] ? ' (incl. ' . $wb['carry'] . ' carried over)' : '') . ' · max 1 per week' ?></small></form>
       <?php endif; ?>
       <?php endif; ?>
       <div class="punch-secondary">
         <?php if ($working): ?>
           <form method="post" action="actions.php"><?= csrf_field() ?><input type="hidden" name="do" value="<?= $state === 'break' ? 'break_end' : 'break_start' ?>"><input type="hidden" name="back" value="index.php">
-            <button class="btn btn-lg btn-block <?= $state === 'break' ? 'btn-brand' : '' ?>"><?= icon('coffee', 18) ?> <?= $state === 'break' ? 'Resume Work' : 'Take a Break' ?></button></form>
+            <button class="btn btn-lg btn-block btn-violet <?= $state === 'break' ? 'btn-brand' : '' ?>"><?= icon('coffee', 18) ?> <?= $state === 'break' ? 'Resume Work' : 'Take a Break' ?></button></form>
         <?php endif; ?>
-        <button type="button" class="btn btn-lg btn-block" data-open="#punchDlg"><?= icon('history', 18) ?> Day Punches (<?= $ts['punch_count'] ?>)</button>
+        <button type="button" class="btn btn-lg btn-block btn-violet" data-open="#punchDlg"><?= icon('history', 18) ?> Day Punches (<?= $ts['punch_count'] ?>)</button>
       </div>
     </div>
   </section>
@@ -155,9 +159,9 @@ render_header('Dashboard', 'dashboard', $user);
 
   <div class="stack">
     <section class="card" id="teamAnnouncements" data-announcements-unread="<?= $unreadAnnouncements > 0 ? '1' : '0' ?>">
-      <div class="card-head"><h2><?= icon('megaphone', 20) ?> Team Announcements<?php if ($unreadAnnouncements): ?> <span class="announcement-unread-dot" role="status" aria-label="New announcements"></span><?php endif; ?></h2></div>
+      <div class="card-head"><h2><?= icon('megaphone', 20) ?> Team Announcements<?php if ($unreadAnnouncements): ?> <span class="announcement-unread-dot" role="status" aria-label="New announcements"></span><?php endif; ?></h2><a href="notices.php" style="font-size:13px">All notices →</a></div>
       <?php foreach ($anns as $a): ?>
-        <article class="ann"><div class="meta"><span><?= e($a['dept']) ?></span><span><?= e(fmt_date($a['posted_on'], 'M d')) ?></span></div><h3><?= e($a['title']) ?></h3><p><?= e($a['body']) ?></p></article>
+        <article class="ann"><div class="meta"><span><?= e($a['dept']) ?></span><span><?= $a['updated_at'] ? 'Updated ' . e(fmt_date($a['updated_at'], 'M d')) : e(fmt_date($a['posted_on'], 'M d')) ?></span></div><h3><?= e($a['title']) ?></h3><p><?= e($a['body']) ?></p></article>
       <?php endforeach; ?>
       <?php if (!$anns): ?><p class="empty">No announcements.</p><?php endif; ?>
     </section>

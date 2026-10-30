@@ -47,6 +47,22 @@
   if (nb) {
     nb.addEventListener('click', (e) => { e.stopPropagation(); np.hidden = !np.hidden; });
     document.addEventListener('click', (e) => { if (!e.target.closest('#notifWrap')) np.hidden = true; });
+    $('#notifClear').addEventListener('click', async () => {
+      const result = await api({ do: 'notif_clear' });
+      if (!result.ok) { toast(result.msg || 'Could not clear notifications.', true); return; }
+      $$('#notifPanel .dd-item').forEach((n) => n.remove());
+      const b = $('.dot-badge', nb); if (b) b.remove();
+      const empty = document.createElement('p'); empty.className = 'muted pad'; empty.textContent = "You're all caught up."; np.appendChild(empty);
+    });
+    $$('#notifPanel [data-invite] [data-choice]').forEach((btn) => btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const box = btn.parentElement, choice = btn.dataset.choice;
+      $$('button', box).forEach((x) => { x.disabled = true; });
+      const r = await api({ do: 'project_respond', id: box.dataset.invite, choice });
+      if (!r.ok) { $$('button', box).forEach((x) => { x.disabled = false; }); return toast(r.msg, true); }
+      box.innerHTML = choice === 'accept' ? '<span class="badge b-green">Accepted</span> <a href="project.php?id=' + box.dataset.invite + '">Open project</a>' : '<span class="badge b-red">Rejected</span>';
+      box.closest('.dd-item').classList.remove('unread'); toast(r.msg);
+    }));
     $('#notifReadAll').addEventListener('click', async () => {
       const result = await api({ do: 'notif_read' });
       if (!result.ok) { toast(result.msg || 'Could not mark notifications as read.', true); return; }
@@ -173,6 +189,161 @@
     ['dragleave', 'drop'].forEach((ev) => z.addEventListener(ev, (e) => { e.preventDefault(); z.classList.remove('over'); }));
     z.addEventListener('drop', (e) => { if (e.dataTransfer.files.length) { inp.files = e.dataTransfer.files; inp.dispatchEvent(new Event('change')); } });
   });
+
+
+  // project form: progress slider <-> number, secret show/hide, existing-file removal, multi-file drop zone
+  $$('[data-progress]').forEach((box) => {
+    const r = $('input[type=range]', box), n = $('input[type=number]', box);
+    const clamp = (v) => Math.max(0, Math.min(100, parseInt(v, 10) || 0));
+    r.addEventListener('input', () => { n.value = r.value; });
+    n.addEventListener('input', () => { r.value = clamp(n.value); });
+    n.addEventListener('change', () => { n.value = clamp(n.value); r.value = n.value; });
+  });
+  $$('[data-mask]').forEach((b) => b.addEventListener('click', () => $(b.dataset.mask).classList.toggle('masked')));
+  $$('[data-remove-file]').forEach((b) => b.addEventListener('click', () => {
+    const row = b.closest('.file-row'), inp = $('input[name="remove_files[]"]', row);
+    inp.disabled = !inp.disabled; row.classList.toggle('removed', !inp.disabled);
+  }));
+  $$('.drop[data-multi]').forEach((z) => {
+    const inp = $('#' + z.dataset.multi), list = $('#' + z.dataset.list);
+    const eye = '<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const bin = '<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/></svg>';
+    let files = [];
+    const paint = () => {
+      const dt = new DataTransfer(); files.forEach((f) => dt.items.add(f)); inp.files = dt.files;
+      list.innerHTML = '';
+      files.forEach((f, i) => {
+        const row = document.createElement('div'); row.className = 'file-row is-new';
+        const fn = document.createElement('div'); fn.className = 'fn'; fn.textContent = f.name;
+        const sz = document.createElement('small'); sz.textContent = (f.size / 1024 < 1024 ? Math.round(f.size / 1024) + ' KB' : (f.size / 1048576).toFixed(1) + ' MB') + ' · new'; fn.appendChild(sz);
+        const view = document.createElement('a'); view.className = 'icon-btn'; view.innerHTML = eye; view.href = URL.createObjectURL(f); view.target = '_blank'; view.rel = 'noopener'; view.title = 'View'; view.setAttribute('aria-label', 'View');
+        const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'icon-btn'; rm.innerHTML = bin; rm.title = 'Remove'; rm.setAttribute('aria-label', 'Remove');
+        rm.addEventListener('click', () => { files.splice(i, 1); paint(); });
+        row.append(fn, view, rm); list.appendChild(row);
+      });
+    };
+    z.addEventListener('click', () => inp.click());
+    inp.addEventListener('change', () => { files = files.concat(Array.from(inp.files)); paint(); });
+    ['dragenter', 'dragover'].forEach((ev) => z.addEventListener(ev, (e) => { e.preventDefault(); z.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach((ev) => z.addEventListener(ev, (e) => { e.preventDefault(); z.classList.remove('over'); }));
+    z.addEventListener('drop', (e) => { files = files.concat(Array.from(e.dataTransfer.files)); paint(); });
+  });
+
+
+  // expense sheet: serial numbers, live amounts and total
+  const expBody = $('#expRows');
+  if (expBody) {
+    const fmt = (n) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const calc = () => {
+      let total = 0;
+      $$('tr', expBody).forEach((tr, i) => {
+        const amt = Math.round((parseFloat($('[name="qty[]"]', tr).value) || 0) * (parseFloat($('[name="price[]"]', tr).value) || 0) * 100) / 100;
+        total += amt; $('.sl', tr).textContent = i + 1; $('.amt', tr).textContent = fmt(amt);
+      });
+      $('#expTotal').textContent = fmt(total);
+    };
+    expBody.addEventListener('input', calc);
+    expBody.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-exp-del]'); if (!b) return;
+      const tr = b.closest('tr');
+      if ($$('tr', expBody).length > 1) tr.remove(); else $$('input', tr).forEach((i) => { i.value = ''; });
+      calc();
+    });
+    $('#expAdd').addEventListener('click', () => {
+      const tr = expBody.lastElementChild.cloneNode(true);
+      $$('input', tr).forEach((i) => { i.value = ''; }); expBody.appendChild(tr); calc(); $('input', tr).focus();
+    });
+    calc();
+  }
+
+
+  // notebook rich-text editor
+  const rte = $('#rte');
+  if (rte) {
+    const bar = $('#rteBar'), hidden = $('#rteInput'); let saved = null;
+    const save = () => { const sel = getSelection(); if (sel.rangeCount && rte.contains(sel.anchorNode)) saved = sel.getRangeAt(0).cloneRange(); };
+    document.addEventListener('selectionchange', save);
+    const restore = () => { rte.focus(); if (saved) { const sel = getSelection(); sel.removeAllRanges(); sel.addRange(saved); } };
+    const run = (cmd, val) => {
+      restore();
+      document.execCommand('styleWithCSS', false, cmd !== 'fontSize');
+      document.execCommand(cmd, false, val);
+      save();
+    };
+    // "deselect" a colour: paint a marker colour (the browser splits any coloured parent spans for us), then strip the marker
+    const MARK = 'rgb(1, 2, 3)';
+    const clearColour = (kind) => {
+      const cmd = kind === 'bg' ? 'hiliteColor' : 'foreColor', prop = kind === 'bg' ? 'backgroundColor' : 'color', css = kind === 'bg' ? 'background-color' : 'color';
+      run(cmd, '#010203');
+      $$('[style]', rte).forEach((el) => {
+        if (el.style[prop] !== MARK) return;
+        el.style.removeProperty(css);
+        if (!el.getAttribute('style')) {
+          el.removeAttribute('style');
+          if (el.tagName === 'SPAN' && !el.attributes.length) { while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el); el.remove(); }
+        }
+      });
+    };
+    const setSize = (px) => {
+      run('fontSize', '7');
+      $$('font[size="7"]', rte).forEach((f) => { const sp = document.createElement('span'); sp.style.fontSize = px + 'px'; while (f.firstChild) sp.appendChild(f.firstChild); f.replaceWith(sp); });
+    };
+    bar.addEventListener('mousedown', (e) => { if (e.target.closest('button')) e.preventDefault(); });
+    bar.addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.clear) clearColour(b.dataset.clear); else if (b.dataset.hl) run('hiliteColor', b.dataset.hl); else if (b.dataset.cmd) run(b.dataset.cmd);
+    });
+    bar.addEventListener('change', (e) => {
+      const t = e.target, cmd = t.dataset.cmd; if (!cmd) return;
+      if (t.tagName === 'SELECT') { if (t.value) { cmd === 'fontSize' ? setSize(t.value) : run(cmd, t.value); } t.value = ''; }
+      else run(cmd, t.value);
+    });
+    rte.addEventListener('paste', (e) => { e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain')); });
+    rte.closest('form').addEventListener('submit', () => { hidden.value = rte.textContent.trim() === '' ? '' : rte.innerHTML; });
+  }
+
+
+  // copy-to-clipboard buttons
+  $$('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
+    const inp = $(b.dataset.copy); const text = inp.value.trim();
+    if (!text) return toast('Nothing to copy yet.', true);
+    try { await navigator.clipboard.writeText(text); }
+    catch (e) { inp.select(); document.execCommand('copy'); inp.setSelectionRange(0, 0); }
+    toast('Link copied.');
+  }));
+
+
+  // note audience: show employee picker only for "specific employees"
+  $$('input[name=audience]').forEach((r) => r.addEventListener('change', () => { const l = $('#audList'); if (l) l.hidden = $('input[name=audience]:checked').value === 'all'; }));
+
+
+  // employee pickers: live search filter
+  $$('input[data-filter-list]').forEach((inp) => inp.addEventListener('input', () => {
+    const list = $(inp.dataset.filterList), term = inp.value.trim().toLowerCase(); let shown = 0;
+    $$('.member-opt', list).forEach((o) => { const hit = !term || o.textContent.toLowerCase().includes(term); o.hidden = !hit; if (hit) shown++; });
+    const none = $('#memEmpty'); if (none && list.id === 'memberPick') none.hidden = shown > 0;
+  }));
+  // project members: single (one employee) vs group (many), count, select shown / clear
+  const mp = $('#memberPick');
+  if (mp) {
+    const boxes = () => $$('input[type=checkbox]', mp), mode = () => ($('input[name=project_type]:checked') || {}).value;
+    const sync = () => { $('#memCount').textContent = boxes().filter((b) => b.checked).length + ' selected'; };
+    const applyMode = () => {
+      const single = mode() === 'single';
+      $('#memLabel').textContent = single ? 'Assign to employee' : 'Group members';
+      $('#memAll').hidden = single;
+      if (single) { let seen = false; boxes().forEach((b) => { if (b.checked && seen) b.checked = false; else if (b.checked) seen = true; }); }
+      sync();
+    };
+    mp.addEventListener('change', (e) => {
+      if (mode() === 'single' && e.target.checked) boxes().forEach((b) => { if (b !== e.target) b.checked = false; });
+      sync();
+    });
+    $$('input[name=project_type]').forEach((r) => r.addEventListener('change', applyMode));
+    $('#memAll').addEventListener('click', () => { $$('.member-opt:not([hidden]) input', mp).forEach((b) => { b.checked = true; }); sync(); });
+    $('#memNone').addEventListener('click', () => { boxes().forEach((b) => { b.checked = false; }); sync(); });
+    applyMode();
+  }
 
   // leave form: live duration + reason counter
   const lf = $('#leaveForm');

@@ -49,6 +49,7 @@ if (!$isAdmin): ?>
     };
     $statCard = fn(string $title, int $n, array $list, ?string $link = null) => '<button type="button" class="card stat stat-btn" data-stat="' . e(json_encode(['title' => $title, 'list' => $list, 'link' => $link])) . '"><div class="eyebrow">' . e($title) . '</div><div class="big">' . $n . '</div></button>';
     $pendCard = fn(string $title, int $n, array $list, string $link) => '<button type="button" class="card stat-btn" data-stat="' . e(json_encode(['title' => $title, 'list' => $list, 'link' => $link])) . '"><div class="eyebrow">' . e($title) . '</div><div style="font-size:30px;font-weight:600;margin-top:6px">' . $n . '</div></button>'; ?>
+  <div class="admin-cards">
   <div class="grid g-4 g-5">
     <?= $statCard('Total employees', count($roster), $people(fn() => true)) ?>
     <?= $statCard('Present today', $present, $byState(['present_live', 'break', 'present_done'])) ?>
@@ -56,10 +57,11 @@ if (!$isAdmin): ?>
     <?= $statCard('On approved leave today', $onLeave, $byState(['leave'])) ?>
     <?= $statCard('On week off today', $weekOff, $byState(['weekoff'])) ?>
   </div>
-  <div class="grid g-3 mt">
+  <div class="grid g-3 mt pend-grid">
     <?= $pendCard('Pending leave requests', $pendLeave, $pendPeople('leave_requests'), 'admin.php?tab=leaves') ?>
     <?= $pendCard('Pending regularizations', $pendReg, $pendPeople('regularizations'), 'admin.php?tab=leaves') ?>
     <?= $pendCard('Submitted work logs', $submittedLogs, $pendPeople('work_logs'), 'admin.php?tab=logs&status=submitted') ?>
+  </div>
   </div>
   <dialog id="statDlg">
     <div class="modal-h"><h2 id="statTitle"></h2><button type="button" class="icon-btn" data-close aria-label="Close"><?= icon('x', 18) ?></button></div>
@@ -244,7 +246,13 @@ if (!$isAdmin): ?>
   <div class="grid g-3-2" style="align-items:start">
     <section class="card"><div class="card-head"><h2>Announcements</h2></div>
       <?php foreach ($as as $a): ?><article class="ann"><div class="meta"><span><?= e($a['dept']) ?> · <?= e(fmt_date($a['posted_on'], 'M d')) ?></span>
-        <form method="post" action="actions.php" data-confirm="Delete this announcement?"><?= csrf_field() ?><input type="hidden" name="do" value="admin_announce_delete"><input type="hidden" name="id" value="<?= $a['id'] ?>"><input type="hidden" name="back" value="admin.php?tab=announce"><button class="link-btn" style="color:var(--red)">Delete</button></form></div><h3><?= e($a['title']) ?></h3><p><?= e($a['body']) ?></p></article><?php endforeach; ?></section>
+        <form method="post" action="actions.php" data-confirm="Delete this announcement?"><?= csrf_field() ?><input type="hidden" name="do" value="admin_announce_delete"><input type="hidden" name="id" value="<?= $a['id'] ?>"><input type="hidden" name="back" value="admin.php?tab=announce"><button class="link-btn" style="color:var(--red)">Delete</button></form></div><h3><?= e($a['title']) ?></h3><p><?= e($a['body']) ?></p><?php if ($a['updated_at']): ?><small class="muted">Edited <?= e(fmt_date($a['updated_at'], 'M d, h:i A')) ?></small><?php endif; ?>
+        <details class="ann-edit"><summary class="link-btn">Edit</summary>
+          <form method="post" action="actions.php"><?= csrf_field() ?><input type="hidden" name="do" value="admin_announce_edit"><input type="hidden" name="id" value="<?= $a['id'] ?>"><input type="hidden" name="back" value="admin.php?tab=announce">
+            <div class="field"><label class="f">Department</label><input class="input" name="dept" required value="<?= e($a['dept']) ?>" maxlength="60"></div>
+            <div class="field"><label class="f">Title</label><input class="input" name="title" required maxlength="200" value="<?= e($a['title']) ?>"></div>
+            <div class="field"><label class="f">Message</label><textarea class="input" name="body" required maxlength="1000" rows="4"><?= e($a['body']) ?></textarea></div>
+            <button class="btn btn-brand btn-sm">Update &amp; notify</button></form></details></article><?php endforeach; ?></section>
     <section class="card"><div class="card-head"><h2>Post announcement</h2></div><form method="post" action="actions.php"><?= csrf_field() ?><input type="hidden" name="do" value="admin_announce_add"><input type="hidden" name="back" value="admin.php?tab=announce">
       <div class="field"><label class="f">Department</label><input class="input" name="dept" required value="HR Operations" maxlength="60"></div><div class="field"><label class="f">Title</label><input class="input" name="title" required maxlength="200"></div>
       <div class="field"><label class="f">Message</label><textarea class="input" name="body" required maxlength="1000"></textarea></div><button class="btn btn-brand">Publish</button></form></section>

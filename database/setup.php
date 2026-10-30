@@ -12,6 +12,9 @@ require __DIR__ . '/../app/leave_lib.php';
 require __DIR__ . '/../app/payroll_lib.php';
 require __DIR__ . '/../app/admin_lib.php';
 require __DIR__ . '/../app/offer_letter.php';
+require __DIR__ . '/../app/joining_letter.php';
+require __DIR__ . '/../app/nda_letter.php';
+require __DIR__ . '/../app/support_lib.php';
 
 $demo = !in_array('--no-demo', $argv, true);
 $c = cfg('db');
@@ -30,6 +33,7 @@ db()->exec(file_get_contents(__DIR__ . '/schema.sql'));
 echo "Schema created.\n";
 
 // 3. reference data (always loaded)
+foreach (support_default_faqs() as $i => [$fq, $fa]) q('INSERT INTO support_faqs (question, answer, sort_order) VALUES (?,?,?)', [$fq, $fa, $i + 1]);
 q('INSERT INTO shifts (id, name, label, start_time, end_time, required_min, break_allow_min, grace_min) VALUES (1,"General","Standard 7H Shift","10:30:00","17:30:00",420,60,15)');
 foreach ([['SL', 'Sick Leave', 'Active Cycle', 8, 1, '#c62828', 1], ['PL', 'Paid Leave', 'Calendar Year', 12, 1, '#8e1b1b', 2],
           ['LOP', 'Unpaid / LOP', 'Zero Impact', 0, 0, '#94a3b8', 3]] as $t) {
@@ -167,7 +171,7 @@ q('INSERT INTO regularizations (user_id, work_date, req_in, req_out, reason) VAL
 notify($sarah, 'Alex Morgan requested attendance regularization for ' . fmt_date($missed, 'M d') . '.', 'admin.php?tab=approvals');
 
 // offer letters for every demo employee
-foreach (q_all('SELECT id FROM users WHERE role <> "admin"') as $e2) create_offer_letter((int)$e2['id']);
+foreach (q_all('SELECT id FROM users WHERE role <> "admin"') as $e2) { create_offer_letter((int)$e2['id']); create_joining_letter((int)$e2['id']); create_nda_letter((int)$e2['id']); }
 
 // 9. payslips for the last completed month (the simulated attendance covers ~75 days)
 foreach (q_all('SELECT * FROM users WHERE role <> "admin"') as $emp) {

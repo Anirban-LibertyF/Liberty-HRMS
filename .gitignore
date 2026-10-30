@@ -1,3 +1,4 @@
 .mysql-data/
 storage/uploads/
 storage/php-error.log
+storage/.app_key

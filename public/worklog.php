@@ -32,10 +32,12 @@ page_title('Daily Work Log', 'Record deliverables and accomplishments for each w
   <section class="card">
     <div class="card-head"><h2>Log History</h2></div>
     <?php foreach ($hist as $h): ?>
-      <a class="feed-item" href="worklog.php?date=<?= e($h['log_date']) ?>" style="color:inherit;border-bottom:1px solid var(--line-2)">
+      <div class="feed-item" style="border-bottom:1px solid var(--line-2);align-items:center">
         <span class="feed-ic blue"><?= icon('log', 16) ?></span>
-        <div style="flex:1"><div class="tt"><span><?= e(fmt_date($h['log_date'], 'D, M j')) ?> <?= $h['tag'] ? '· ' . e($h['tag']) : '' ?></span><span class="badge badge-text <?= $cls[$h['status']] ?>"><?= e(ucfirst($h['status'])) ?></span></div>
-          <p><?= e(mb_strimwidth(str_replace("\n", ' ', $h['content']), 0, 90, '…')) ?></p></div></a>
+        <a href="worklog.php?date=<?= e($h['log_date']) ?>" style="flex:1;color:inherit"><div class="tt"><span><?= e(fmt_date($h['log_date'], 'D, M j')) ?> <?= $h['tag'] ? '· ' . e($h['tag']) : '' ?></span><span class="badge badge-text <?= $cls[$h['status']] ?>"><?= e(ucfirst($h['status'])) ?></span></div>
+          <p><?= e(mb_strimwidth(str_replace("\n", ' ', $h['content']), 0, 90, '…')) ?></p></a>
+        <?php if (!empty($h['attach_name'])): ?><a class="icon-btn" href="download.php?t=worklog&id=<?= $h['id'] ?>" target="_blank" rel="noopener" aria-label="View attachment" title="<?= e($h['attach_name']) ?>"><?= icon('clip', 16) ?></a><?php endif; ?>
+      </div>
     <?php endforeach; ?>
     <?php if (!$hist): ?><p class="empty">No work logs yet.</p><?php endif; ?>
   </section>

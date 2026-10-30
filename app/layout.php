@@ -26,7 +26,7 @@ function icon(string $name, int $s = 18): string
         'coffee' => '<path d="M17 8h1a4 4 0 0 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4zM6 1v3M10 1v3M14 1v3"/>',
         'history' => '<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/>',
         'in' => '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>',
-        'out' => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+        'out' => '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M8 7l-5 5 5 5M15 12H3"/>',
         'break' => '<path d="M17 8h1a4 4 0 0 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/>',
         'clip' => '<path d="M21 12l-9 9a6 6 0 0 1-9-9l9-9a4 4 0 0 1 6 6l-9 9a2 2 0 0 1-3-3l8-8"/>',
         'shield' => '<path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/>',
@@ -42,6 +42,11 @@ function icon(string $name, int $s = 18): string
         'moon' => '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
         'sun' => '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
         'trash' => '<path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/>',
+        'plus' => '<path d="M12 5v14M5 12h14"/>',
+        'briefcase' => '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M2 13h20"/>',
+        'rupee' => '<path d="M6 3h12M6 8h12M6 13l8.5 8M6 13h3M9 13c6.667 0 6.667-10 0-10"/>',
+        'copy' => '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+        'lock' => '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
     ];
     return '<svg class="ic" width="' . $s . '" height="' . $s . '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($p[$name] ?? $p['check']) . '</svg>';
 }
@@ -60,13 +65,21 @@ function render_header(string $title, string $active, array $user, array $opts =
         'holidays' => ['admin.php?tab=holidays', 'Holidays', 'palm'],
         'announce' => ['admin.php?tab=announce', 'Announcements', 'megaphone'],
         'payroll' => ['admin.php?tab=payroll', 'Payroll', 'payslip'],
+        'projects' => ['projects.php', 'Projects', 'briefcase'],
+        'expenses' => ['expenses.php', 'Expenses', 'rupee'],
+        'documents' => ['admin_documents.php', 'Documents', 'folder'],
+        'notes' => ['notes.php', 'Notes', 'edit'],
     ] : [
         'dashboard' => ['index.php', 'Dashboard', 'dashboard'],
         'attendance' => ['attendance.php', 'Attendance Calendar', 'calendar'],
         'leave' => ['leave.php', 'Leave Application', 'leave'],
         'worklog' => ['worklog.php', 'Daily Work Log', 'log'],
+        'projects' => ['projects.php', 'Projects', 'briefcase'],
+        'expenses' => ['expenses.php', 'Expenses', 'rupee'],
         'payslips' => ['payslips.php', 'Payslips', 'payslip'],
         'documents' => ['documents.php', 'Documents', 'folder'],
+        'notes' => ['notes.php', 'Personal Notebook', 'edit'],
+        'notices' => ['notices.php', 'Notices', 'megaphone'],
         'profile' => ['profile.php', 'Profile', 'user'],
     ];
     if (!$isAdm && is_staff($user)) $nav['admin'] = ['admin.php', 'Admin Portal', 'admin'];
@@ -102,9 +115,7 @@ function render_header(string $title, string $active, array $user, array $opts =
         <label class="toggle-row"><span><?= icon('shield', 16) ?> Admin View</span>
           <input type="checkbox" class="switch" id="adminSwitch" <?= $active === 'admin' ? 'checked' : '' ?> aria-label="Toggle admin view"></label>
       <?php endif; ?>
-      <?php if (!$isAdm): ?><a href="profile.php#security"><?= icon('settings', 16) ?> Settings</a><?php endif; ?>
       <a href="support.php"><?= icon('help', 16) ?> Support</a>
-      <a href="logout.php"><?= icon('logout', 16) ?> Sign out</a>
     </div>
   </aside>
 
@@ -128,7 +139,7 @@ function render_header(string $title, string $active, array $user, array $opts =
         <div class="dropdown" id="notifWrap">
           <button class="icon-btn" id="notifBtn" aria-label="Notifications"><?= icon('bell', 20) ?><?php if ($unread): ?><span class="dot-badge"><?= $unread ?></span><?php endif; ?></button>
           <div class="dropdown-panel" id="notifPanel" hidden>
-            <div class="dd-head"><b>Notifications</b><button class="link-btn" id="notifReadAll">Mark all read</button></div>
+            <div class="dd-head"><b>Notifications</b><span><button class="link-btn" id="notifReadAll">Mark all read</button> · <button class="link-btn" id="notifClear">Clear all</button></span></div>
             <?php $ns = q_all('SELECT * FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 8', [$user['id']]); ?>
             <?php if (!$ns): ?><p class="muted pad">You're all caught up.</p><?php endif; ?>
             <?php foreach ($ns as $n): ?>
@@ -137,9 +148,18 @@ function render_header(string $title, string $active, array $user, array $opts =
               if (preg_match('/\brequest\b.*\bwas\s+(approved|rejected)\b/i', $n['message'], $match)) {
                   $leaveStatusClass = $match[1] === 'approved' ? 'leave-approved' : 'leave-rejected';
               }
-              $announcementClass = str_starts_with($n['message'], 'New announcement:') ? 'announcement-new' : '';
+              $announcementClass = (str_starts_with($n['message'], 'New announcement:') || str_starts_with($n['message'], 'Announcement updated:')) ? 'announcement-new' : '';
               ?>
+              <?php if (preg_match('/^projects\.php\?invite=(\d+)/', (string)$n['link'], $im)):
+                  $inv = (int)$im[1]; $invSt = q_val('SELECT status FROM project_members WHERE project_id=? AND user_id=?', [$inv, $user['id']]); ?>
+              <div class="dd-item <?= $n['is_read'] ? '' : 'unread' ?>"><?= e($n['message']) ?><small><?= e(date('M d, h:i A', strtotime($n['created_at']))) ?></small>
+                <div class="dd-actions" data-invite="<?= $inv ?>">
+                  <?php if ($invSt === 'pending'): ?><button type="button" class="btn btn-sm btn-brand" data-choice="accept">Accept</button><button type="button" class="btn btn-sm btn-danger" data-choice="reject">Reject</button>
+                  <?php elseif ($invSt): ?><span class="badge <?= $invSt === 'accepted' ? 'b-green' : 'b-red' ?>"><?= e(ucfirst($invSt)) ?></span><?php if ($invSt === 'accepted'): ?> <a href="project.php?id=<?= $inv ?>">Open project</a><?php endif; ?>
+                  <?php else: ?><span class="muted">No longer available</span><?php endif; ?></div></div>
+              <?php else: ?>
               <a class="dd-item <?= $n['is_read'] ? '' : 'unread' ?> <?= $leaveStatusClass ?> <?= $announcementClass ?>" href="<?= e($n['link'] ?: '#') ?>"><?= e($n['message']) ?><small><?= e(date('M d, h:i A', strtotime($n['created_at']))) ?></small></a>
+              <?php endif; ?>
             <?php endforeach; ?>
           </div>
         </div>
@@ -150,6 +170,7 @@ function render_header(string $title, string $active, array $user, array $opts =
             <span><b><?= e($user['name']) ?></b><small><?= e($user['emp_code']) ?></small></span>
           </button>
           <div class="dropdown-panel account-panel" id="accountPanel" hidden>
+            <div class="acc-info"><b><?= e($user['name']) ?></b><small><?= e($user['emp_code']) ?></small></div>
             <a class="dd-item" href="logout.php"><?= icon('logout', 16) ?> Log out</a>
           </div>
         </div>
@@ -166,6 +187,13 @@ function render_footer(): void
 {
     ?>
     </main>
+    <footer class="site-foot no-print">
+      <span class="sf-logo"><img src="assets/img/logo.png" alt="Liberty Foundation" height="34"></span>
+      <div class="sf-text">
+        <p>&copy; <?= date('Y') ?> <b>Liberty Foundation</b>. All rights reserved.</p>
+        <p>Developed and Maintained by <b>Liberty Innovation</b></p>
+      </div>
+    </footer>
   </div>
 </div>
 <div class="toast-wrap" id="toasts" aria-live="polite"></div>

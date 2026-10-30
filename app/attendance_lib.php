@@ -102,6 +102,7 @@ function do_punch(array $user, string $type, string $location = ''): array
     switch ($type) {
         case 'in':
             if ($state === 'in' || $state === 'break') return [false, 'You are already checked in.'];
+            if ($state === 'out' && $user['role'] !== 'admin') return [false, 'You have already punched in and out for today. Use Take a Break / Resume Work for the rest of your shift, or contact your admin.'];
             if (is_weekoff($uid, $date)) return [false, 'Today is marked as your week off. Cancel it first to punch in.'];
             $ins('in');
             log_activity($uid, 'in', $s['first_in'] ? 'Punch In (again)' : 'Morning Punch In', 'Checked in at ' . date('h:i A') . ' . ' . $loc . '. Status marked as Present.');

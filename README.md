@@ -7,6 +7,9 @@
     php -c php.ini database/setup.php             # with demo data
     php -c php.ini database/setup.php --no-demo   # only admin + reference data
 
+## Upgrading an existing database without losing data
+setup.php wipes everything. To pick up new tables from schema.sql, run only the new `CREATE TABLE IF NOT EXISTS ...` statements (and any `ALTER TABLE`) against the `trackflow` database instead.
+
 ## Logins
 **Administrator** (turn on the *Login as Administrator* toggle): `liberty.admin@liberty.com` / `Liberty@2008` - the only admin account.
 
@@ -17,6 +20,8 @@ Employees sign in with their ID (`LOE-###`, auto-generated when the admin adds t
 | LOE-001 | Welcome@123 | Manager (Sarah Jenkins) |
 | LOE-002 | Welcome@123 | Employee (Alex Morgan) |
 | LOE-003 | Welcome@123 | Employee (Marcus Vance) |
+| LOE-004 | Welcome@123 | Employee (Priya Nair) |
+| LOE-005 | Welcome@123 | Employee (David Kim) |
 | LOE-006 | Test@12345 | Test Employee |
 
 ## Layout

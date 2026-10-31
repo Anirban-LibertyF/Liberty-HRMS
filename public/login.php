@@ -65,8 +65,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <p class="muted" style="font-size:13px">Enterprise Workforce &amp; Attendance Suite</p>
     </div>
 
-    <div class="secure"><?= icon('shield', 22) ?><div><b>Internal Enterprise Access Only</b><span>Accounts are provisioned and issued by System Administrators. Self-registration is disabled.</span></div></div>
-
     <?php if ($error): ?><div class="alert alert-error" role="alert"><?= icon('x', 20) ?><span><?= e($error) ?></span></div><?php endif; ?>
 
     <form method="post" autocomplete="on">
@@ -84,13 +82,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <button type="button" class="icon-btn eye" data-eye="#password" aria-label="Show password"><?= icon('eye', 18) ?></button></div>
       </div>
       <label class="chk"><input type="checkbox" name="remember" value="1"> Remember this workstation (12h session)</label>
-      <button class="btn btn-dark btn-block btn-lg">Sign In to Workspace <?= icon('arrow', 18) ?></button>
+      <button class="btn btn-dark btn-block btn-lg btn-signin">Sign In to Workspace <?= icon('arrow', 18) ?></button>
     </form>
 
   </div>
-  <div class="login-foot"><span><?= icon('shield', 16) ?> TLS 1.3 Strict Enforced</span><span>Node: US-EAST-04</span></div>
 </div>
 <p class="muted" style="text-align:center;font-size:13px;max-width:420px;margin:0 auto 30px">Need an account or authorization changes? <a href="support.php">Contact HR Operations</a> or your System Administrator.</p>
+<footer class="login-footer">&copy; <?= date('Y') ?> Liberty Foundation &middot; Liberty Office &mdash; Enterprise Workforce &amp; Attendance Suite</footer>
 <div class="toast-wrap" id="toasts"></div>
 <script src="assets/js/app.js"></script>
 </body>

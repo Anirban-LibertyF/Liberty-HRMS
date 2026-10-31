@@ -148,10 +148,8 @@ switch ($do) {
         $letter = true;
         try { create_offer_letter($newId); notify($newId, 'Your offer letter is available under Documents.', 'documents.php'); }
         catch (Throwable $ex) { error_log('Offer letter failed: ' . $ex->getMessage()); $letter = false; }
-        try { create_joining_letter($newId); }
-        catch (Throwable $ex) { error_log('Joining letter failed: ' . $ex->getMessage()); }
-        try { create_nda_letter($newId); notify($newId, 'Your NDA is available under Documents. Please sign and upload it.', 'documents.php'); }
-        catch (Throwable $ex) { error_log('NDA letter failed: ' . $ex->getMessage()); }
+        try { create_appointment_letter($newId); }
+        catch (Throwable $ex) { error_log('Appointment letter failed: ' . $ex->getMessage()); }
         done(true, "Employee created. Employee ID: $code — they can sign in with $code or {$fields['email']}."
             . ($letter ? ' An offer letter was added to their Documents.' : ' The offer letter could not be generated; use "Regenerate offer letter" on this page.'), "admin_employee.php?id=$newId");
 
@@ -161,16 +159,10 @@ switch ($do) {
         notify($id, 'Your offer letter is available under Documents.', 'documents.php');
         done(true, "Offer letter regenerated and added to the employee's Documents.", $back);
 
-    case 'admin_ndaletter_regen':
-        if (!q_val('SELECT COUNT(*) FROM users WHERE id=? AND role <> "admin"', [$id])) done(false, 'Employee not found.', $back);
-        create_nda_letter($id);
-        notify($id, 'Your NDA is available under Documents. Please sign and upload it.', 'documents.php');
-        done(true, "NDA letter regenerated and added to the employee's Documents.", $back);
-
     case 'admin_joiningletter_regen':
         if (!q_val('SELECT COUNT(*) FROM users WHERE id=? AND role <> "admin"', [$id])) done(false, 'Employee not found.', $back);
-        create_joining_letter($id);
-        done(true, "Joining letter regenerated and added to the employee's Documents.", $back);
+        create_appointment_letter($id);
+        done(true, "Appointment letter regenerated and added to the employee's Documents.", $back);
 
     case 'admin_attendance_save':
         $emp = q_one('SELECT u.*, s.name AS shift_name, s.start_time, s.end_time, s.required_min, s.break_allow_min, s.grace_min FROM users u JOIN shifts s ON s.id=u.shift_id WHERE u.id=? AND u.role <> "admin"', [(int)($_POST['user_id'] ?? 0)]);
@@ -284,6 +276,29 @@ switch ($do) {
         $msg = "Payslips generated for $n employee(s) for $label.";
         if ($skipped) $msg .= ' Skipped (joined after this month): ' . implode(', ', $skipped) . '.';
         done($n > 0, $n > 0 ? $msg : "No payslips generated for $label. " . ($skipped ? 'All active employees joined after this month: ' . implode(', ', $skipped) . '.' : 'No active employees.'), $back);
+
+    case 'admin_payout_paid':
+        if (!$isAdmin) done(false, 'Only an administrator can mark payouts as paid.', $back);
+        $m = (string)($_POST['month'] ?? '');
+        $emp = q_one('SELECT * FROM users WHERE id=? AND role <> "admin"', [(int)($_POST['user_id'] ?? 0)]);
+        if (!$emp || !preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $m)) done(false, 'Invalid payout.', $back);
+        if (!empty($_POST['paid'])) {
+            $amount = payroll_calc($emp, $m)['net'];
+            q('INSERT INTO payout_paid (user_id, pay_month, amount, paid_by, paid_at) VALUES (?,?,?,?,NOW()) ON DUPLICATE KEY UPDATE amount=VALUES(amount), paid_by=VALUES(paid_by), paid_at=NOW()', [$emp['id'], $m, $amount, $uid]);
+            done(true, $emp['name'] . ' marked as paid for ' . date('F Y', strtotime("$m-01")) . ' (' . money($amount) . ').', $back);
+        }
+        q('DELETE FROM payout_paid WHERE user_id=? AND pay_month=?', [$emp['id'], $m]);
+        done(true, $emp['name'] . ' marked as unpaid for ' . date('F Y', strtotime("$m-01")) . '.', $back);
+
+    case 'admin_payout_date':
+        if (!$isAdmin) done(false, 'Only an administrator can change the paid date.', $back);
+        $m = (string)($_POST['month'] ?? '');
+        $pd = (string)($_POST['paid_date'] ?? '');
+        $uidPaid = (int)($_POST['user_id'] ?? 0);
+        $dt = DateTime::createFromFormat('!Y-m-d', $pd);
+        if (!$dt || $dt->format('Y-m-d') !== $pd || $pd > today() || !preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $m)) done(false, 'Choose a valid paid date (not in the future).', $back);
+        $st = q('UPDATE payout_paid SET paid_at=CONCAT(?, " ", TIME(paid_at)) WHERE user_id=? AND pay_month=?', [$pd, $uidPaid, $m]);
+        done(true, 'Paid date updated to ' . date('M j, Y', strtotime($pd)) . '.', $back);
 
     default:
         done(false, 'Unknown admin action.', $back);

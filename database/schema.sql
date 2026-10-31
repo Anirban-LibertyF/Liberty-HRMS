@@ -1,6 +1,6 @@
 -- Liberty Office schema (MySQL / MariaDB)
 SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS note_shares, support_faqs, site_settings, note_files, notes, expense_items, expenses, project_files, project_members, projects, activity_log, notifications, documents, payslips, announcements, work_logs,
+DROP TABLE IF EXISTS note_shares, support_faqs, site_settings, note_files, notes, expense_items, expenses, project_files, project_members, projects, activity_log, notifications, documents, payout_paid, payslips, announcements, work_logs,
   week_offs, leave_requests, leave_types, holidays, regularizations, attendance, punch_events, users, shifts;
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -188,6 +188,17 @@ CREATE TABLE payslips (
   net_pay DECIMAL(12,2) NOT NULL,
   generated_at DATETIME NOT NULL,
   UNIQUE KEY uq_slip (user_id, pay_year, pay_month),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE payout_paid (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  pay_month CHAR(7) NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  paid_by INT NULL,
+  paid_at DATETIME NOT NULL,
+  UNIQUE KEY uq_payout (user_id, pay_month),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

@@ -197,6 +197,21 @@ function month_overview(array $user, string $ym): array
     return $days;
 }
 
+/**
+ * Overtime for a month: each present day's overtime is added up; every full shift length (7h on the general shift) of
+ * accumulated overtime earns one extra day of payout (7h = 1, 14h = 2 ...). Returns the dated rows too.
+ */
+function month_overtime(array $days, int $shiftMin): array
+{
+    $rows = []; $total = 0;
+    foreach ($days as $d => $r) {
+        $m = $r['type'] === 'present' ? (int)$r['att']['overtime_min'] : 0;
+        if ($m > 0) { $rows[$d] = $m; $total += $m; }
+    }
+    $shiftMin = max(1, $shiftMin);
+    return ['rows' => $rows, 'total_min' => $total, 'payouts' => intdiv($total, $shiftMin), 'rem_min' => $total % $shiftMin, 'shift_min' => $shiftMin];
+}
+
 /** Aggregated metrics for a month-overview. */
 function month_summary(array $days): array
 {

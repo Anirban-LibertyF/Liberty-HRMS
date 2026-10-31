@@ -8,7 +8,19 @@ $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date']
 if ($date > today()) $date = today();
 $log = q_one('SELECT wl.*, rv.name AS reviewer FROM work_logs wl LEFT JOIN users rv ON rv.id=wl.reviewed_by WHERE wl.user_id=? AND wl.log_date=?', [$uid, $date]);
 $editable = $date >= date('Y-m-d', strtotime('-14 days')) && (!$log || in_array($log['status'], ['draft', 'submitted', 'rejected'], true));
-$hist = q_all('SELECT * FROM work_logs WHERE user_id=? ORDER BY log_date DESC LIMIT 30', [$uid]);
+// Log History: last 7 days by default, or one month when ?hm=YYYY-MM is given.
+$hm = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $_GET['hm'] ?? '') && $_GET['hm'] <= date('Y-m') ? $_GET['hm'] : null;
+if ($hm) {
+    $hist = q_all('SELECT * FROM work_logs WHERE user_id=? AND log_date BETWEEN ? AND ? ORDER BY log_date DESC', [$uid, "$hm-01", date('Y-m-t', strtotime("$hm-01"))]);
+    $histLabel = date('F Y', strtotime("$hm-01"));
+    $prevHm = date('Y-m', strtotime("$hm-01 -1 month"));
+    $nextHm = date('Y-m', strtotime("$hm-01 +1 month"));
+} else {
+    $hist = q_all('SELECT * FROM work_logs WHERE user_id=? AND log_date BETWEEN ? AND ? ORDER BY log_date DESC', [$uid, date('Y-m-d', strtotime('-6 days')), today()]);
+    $histLabel = 'Last 7 days';
+    $prevHm = date('Y-m', strtotime('first day of last month'));
+}
+$hq = fn(?string $m) => 'worklog.php?date=' . urlencode($date) . ($m ? '&hm=' . $m : '');
 $cls = ['draft' => 'b-slate', 'submitted' => 'b-amber', 'approved' => 'b-green', 'rejected' => 'b-red'];
 
 render_header('Daily Work Log', 'worklog', $user);
@@ -31,15 +43,23 @@ page_title('Daily Work Log', 'Record deliverables and accomplishments for each w
 
   <section class="card">
     <div class="card-head"><h2>Log History</h2></div>
+    <div class="hist-nav" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <div class="seg"><a class="<?= $hm ? '' : 'on' ?>" href="<?= e($hq(null)) ?>">Last 7 days</a><a class="<?= $hm ? 'on' : '' ?>" href="<?= e($hq($hm ?: date('Y-m'))) ?>">Month wise</a></div>
+      <?php if ($hm): ?>
+        <a class="btn btn-sm" href="<?= e($hq($prevHm)) ?>">&lsaquo; <?= e(date('M Y', strtotime("$prevHm-01"))) ?></a>
+        <b style="font-size:13px"><?= e($histLabel) ?></b>
+        <a class="btn btn-sm <?= $hm >= date('Y-m') ? 'disabled' : '' ?>" <?= $hm >= date('Y-m') ? 'aria-disabled="true" style="opacity:.5;pointer-events:none"' : '' ?> href="<?= e($hq($nextHm)) ?>"><?= e(date('M Y', strtotime("$nextHm-01"))) ?> &rsaquo;</a>
+      <?php endif; ?>
+    </div>
     <?php foreach ($hist as $h): ?>
       <div class="feed-item" style="border-bottom:1px solid var(--line-2);align-items:center">
         <span class="feed-ic blue"><?= icon('log', 16) ?></span>
-        <a href="worklog.php?date=<?= e($h['log_date']) ?>" style="flex:1;color:inherit"><div class="tt"><span><?= e(fmt_date($h['log_date'], 'D, M j')) ?> <?= $h['tag'] ? '· ' . e($h['tag']) : '' ?></span><span class="badge badge-text <?= $cls[$h['status']] ?>"><?= e(ucfirst($h['status'])) ?></span></div>
+        <a href="worklog.php?date=<?= e($h['log_date']) ?><?= $hm ? '&hm=' . e($hm) : '' ?>" style="flex:1;color:inherit"><div class="tt"><span><?= e(fmt_date($h['log_date'], 'D, M j')) ?> <?= $h['tag'] ? '· ' . e($h['tag']) : '' ?></span><span class="badge badge-text <?= $cls[$h['status']] ?>"><?= e(ucfirst($h['status'])) ?></span></div>
           <p><?= e(mb_strimwidth(str_replace("\n", ' ', $h['content']), 0, 90, '…')) ?></p></a>
         <?php if (!empty($h['attach_name'])): ?><a class="icon-btn" href="download.php?t=worklog&id=<?= $h['id'] ?>" target="_blank" rel="noopener" aria-label="View attachment" title="<?= e($h['attach_name']) ?>"><?= icon('clip', 16) ?></a><?php endif; ?>
       </div>
     <?php endforeach; ?>
-    <?php if (!$hist): ?><p class="empty">No work logs yet.</p><?php endif; ?>
+    <?php if (!$hist): ?><p class="empty">No work logs <?= $hm ? 'in ' . e($histLabel) : 'in the last 7 days' ?>.</p><?php endif; ?>
   </section>
 </div>
 <?php render_footer(); ?>

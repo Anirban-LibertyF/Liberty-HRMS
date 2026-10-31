@@ -18,10 +18,11 @@ $delta = round($sum['rate'] - $prev['rate'], 1);
 $wo = weekoff_balance($user, date('Y-m'));
 $bal = leave_balances($uid, $year);
 $taken = 0.0; $parts = [];
-$remaining = 0.0; $totalQuota = 0.0;
+$remaining = 0.0; $totalQuota = 0.0; $pendingLeave = 0.0;
 foreach ($bal as $b) {
     if ($b['approved'] > 0) $parts[] = (int)ceil($b['approved']) . ' ' . $b['name'] . ' ';
     $taken += $b['approved'];
+    $pendingLeave += $b['pending'];
     if ($b['quota'] > 0) { $remaining += $b['remaining']; $totalQuota += $b['quota']; }
 }
 $monthWorkdays = (int)date('t') - (int)cfg('weekoff_per_month', 4);   // days in month minus weekly offs (26 / 27 ...)
@@ -118,7 +119,7 @@ render_header('Dashboard', 'dashboard', $user);
   </section>
 </div>
 
-<div class="grid g-4 g-5 mt">
+<div class="grid g-4 mt">
   <div class="card stat"><div class="stat-head"><span class="eyebrow">Month Attendance</span><?= icon('calendar', 18) ?></div>
     <div class="big"><span style="color:#c62828"><?= $presentDays ?></span> <small style="font-size:22px">/ <?= max($active, $presentDays) ?> days</small></div>
     <div class="meter"><i style="width:<?= min(100, $presentDays / max(1, $active, $presentDays) * 100) ?>%"></i></div>
@@ -127,14 +128,14 @@ render_header('Dashboard', 'dashboard', $user);
     <div class="big"><?= $wo['left'] ?> <small>/ <?= $wo['total'] ?> days left</small></div>
     <div class="meter"><i style="width:<?= $wo['total'] ? round($wo['left'] / $wo['total'] * 100) : 0 ?>%;background:var(--blue)"></i></div>
     <p class="muted" style="font-size:12.5px;margin-top:10px"><?= $wo['used'] ?> used in <?= e(date('F')) ?><?= $wo['carry'] ? ' · ' . $wo['carry'] . ' carried over' : '' ?></p></div>
-  <div class="card stat"><div class="stat-head"><span class="eyebrow">Leaves Taken</span><?= icon('leave', 18) ?></div>
-    <div class="big"><?= (int)ceil($taken) ?> <small>Days</small> <span class="pill mono" style="font-size:10px">YTD <?= $year ?></span></div>
-    <div class="meter"><i style="width:<?= min(100, $taken / max(1, $totalQuota) * 100) ?>%;background:var(--ink)"></i></div>
-    <p class="muted" style="font-size:12.5px;margin-top:10px"><?= $parts ? e(implode('• ', $parts)) : 'No approved leave yet' ?></p></div>
-  <div class="card stat"><div class="stat-head"><span class="eyebrow">Leaves Remaining</span><?= icon('check', 18) ?></div>
-    <div class="big"><?= (int)floor($remaining) ?> <small>Days</small></div>
-    <div class="meter"><i style="width:<?= min(100, $remaining / max(1, $totalQuota) * 100) ?>%"></i></div>
-    <p class="muted" style="font-size:12.5px;margin-top:10px">Valid until Dec 31, <?= $year ?></p></div>
+  <div class="card stat"><div class="stat-head"><span class="eyebrow">Leaves</span><?= icon('leave', 18) ?></div>
+    <div class="big"><?= (int)$taken ?> <small>/ <?= (int)$totalQuota ?> days</small> <span class="pill mono" style="font-size:10px"><?= $year ?></span></div>
+    <div class="meter"><i style="width:<?= min(100, ($taken + $pendingLeave) / max(1, $totalQuota) * 100) ?>%;background:var(--ink)"></i></div>
+    <div class="muted" style="font-size:12.5px;margin-top:10px;line-height:1.7">
+      <div>Leave taken: <b><?= (int)ceil($taken) ?></b></div>
+      <div>Pending: <b><?= (int)ceil($pendingLeave) ?></b></div>
+      <div>Remaining: <b><?= (int)floor($remaining) ?></b></div>
+    </div></div>
   <div class="card stat"><div class="stat-head"><span class="eyebrow">Work Logs Logged</span><?= icon('log', 18) ?></div>
     <div class="big"><?= $logsDone ?><small style="font-size:22px">/<?= max($monthWorkdays, $logsDone) ?></small></div>
     <div class="meter"><i style="width:<?= min(100, $logsDone / max(1, $monthWorkdays) * 100) ?>%;background:var(--ink)"></i></div>

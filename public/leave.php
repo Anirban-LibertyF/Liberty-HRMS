@@ -61,12 +61,17 @@ render_header('Leave Application', 'leave', $user);
     <div class="meter" style="margin-top:14px"><i style="width:<?= $wb['total'] ? round($wb['left'] / $wb['total'] * 100) : 0 ?>%;background:var(--blue)"></i></div>
     <div class="lt-foot"><span><?= $wb['per_month'] ?> new each month · max 1 per week</span><b>Resets <?= e(date('M j', strtotime('first day of next month'))) ?></b></div>
   </div>
+  <div class="card lt-card apply-card" style="border-top-color:var(--brand)">
+    <div class="lt-top"><h3><?= icon('calendar', 20) ?> <span>Time Off</span></h3></div>
+    <p class="muted" style="font-size:12.5px;margin:6px 0 16px">Submit an approval request to your reporting line manager.</p>
+    <button type="button" class="btn btn-brand btn-block" data-open="#leaveDlg"><?= icon('send', 16) ?> Apply for Leave</button>
+  </div>
 </div>
 
-<div class="grid g-5-7 mt" style="align-items:start">
+<dialog id="leaveDlg" class="leave-dlg">
   <form class="card" id="leaveForm" method="post" action="actions.php" enctype="multipart/form-data" data-holidays='<?= e(json_encode($hols)) ?>'>
     <?= csrf_field() ?><input type="hidden" name="do" value="leave_apply" id="leaveDo"><input type="hidden" name="draft_id" value="<?= (int)($draft['id'] ?? 0) ?>">
-    <div class="card-head" style="margin-bottom:6px"><h2><?= icon('calendar', 22) ?> Apply for Leave</h2></div>
+    <div class="card-head" style="margin-bottom:6px"><h2><?= icon('calendar', 22) ?> Apply for Leave</h2><button type="button" class="icon-btn" data-close aria-label="Close"><?= icon('x', 18) ?></button></div>
     <p class="muted" style="margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--line)">Submit an approval request to your reporting line manager.</p>
     <div class="field"><label class="f" for="lt">LEAVE TYPE <span class="req">*</span></label>
       <select class="input" id="lt" name="leave_type_id" required>
@@ -87,10 +92,13 @@ render_header('Leave Application', 'leave', $user);
     <div class="btn-row"><button class="btn btn-brand" style="flex:1"><?= icon('send', 16) ?> Submit Leave Request</button>
       <button class="btn" style="flex:1" formnovalidate onclick="document.getElementById('leaveDo').value='leave_draft'"><?= icon('bookmark', 16) ?> Save as Draft</button></div>
   </form>
+</dialog>
+<?php if ($draft): ?><script>document.getElementById('leaveDlg').showModal();</script><?php endif; ?>
 
+<div class="mt">
   <section class="card leave-history-panel" style="padding:0">
     <div class="leave-history-head">
-      <div><h2 class="leave-history-title"><?= icon('history', 22) ?> Past Leave Applications &amp; History</h2><p class="muted" style="margin-top:6px;max-width:260px">Log of previous requests, manager review notes, and current statuses.</p></div>
+      <div><h2 class="leave-history-title"><?= icon('history', 22) ?> Past Leave Applications &amp; History</h2><p class="muted" style="margin-top:6px;max-width:420px">Log of previous requests, manager review notes, and current statuses.</p></div>
       <div class="seg" role="tablist">
         <button class="on" data-filter="all">All (<?= $cnt['all'] ?>)</button><button data-filter="pending">Pending (<?= $cnt['pending'] ?>)</button>
         <button data-filter="approved">Approved (<?= $cnt['approved'] ?>)</button><button data-filter="rejected">Rejected (<?= $cnt['rejected'] ?>)</button></div>

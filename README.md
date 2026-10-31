@@ -8,12 +8,18 @@
     php -c php.ini database/setup.php --no-demo   # only admin + reference data
 
 ## Upgrading an existing database without losing data
-setup.php wipes everything. To pick up new tables from schema.sql, run only the new `CREATE TABLE IF NOT EXISTS ...` statements (and any `ALTER TABLE`) against the `trackflow` database instead.
+After every `git pull`, run the migration (safe to repeat, keeps all data):
+
+    php -c php.ini database/migrate.php
+
+It adds new tables, fixes leave types (Paid Leave 18 days), renames document categories and **generates every employee's Offer Letter and
+Appointment Letter PDFs** (those are files in `storage/uploads`, which git does not carry, so they have to be generated on each machine).
+`setup.php` also generates them, but it wipes the database first.
 
 ## Logins
 **Administrator** (turn on the *Login as Administrator* toggle): `liberty.admin@liberty.com` / `Liberty@2008` - the only admin account.
 
-Employees sign in with their ID (`LOE-###`, auto-generated when the admin adds them) or email:
+Employees sign in with their ID (`LOE-###`, auto-generated when the admin adds them - the numbers are random, see the Employees page) or email:
 
 | ID | Password | Role |
 |---|---|---|

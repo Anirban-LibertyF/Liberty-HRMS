@@ -4,6 +4,13 @@
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
+  // No right-click menu and no text selection / copying, except inside form fields and the rich-text editor.
+  const editable = (el) => !!(el && el.closest && el.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"], .rte-edit'));
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
+  document.addEventListener('selectstart', (e) => { if (!editable(e.target)) e.preventDefault(); });
+  document.addEventListener('copy', (e) => { if (!editable(e.target)) e.preventDefault(); });
+  document.addEventListener('dragstart', (e) => { if (e.target && e.target.tagName === 'IMG') e.preventDefault(); });
+
   window.toast = function (msg, err) {
     const box = $('#toasts'); if (!box) return;
     const t = document.createElement('div');

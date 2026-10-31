@@ -31,7 +31,8 @@ $badgeCls = ['present' => 'b-green', 'absent' => 'b-red', 'leave' => 'b-amber', 
 render_header('Attendance Calendar', 'attendance', $user);
 page_title('Attendance Calendar', 'Review your daily punch logs and company holidays.',
     '<span class="pill mono" style="font-size:11px">Shift: ' . e($user['shift_name']) . ' (' . e(substr($user['start_time'], 0, 5)) . ' - ' . e(substr($user['end_time'], 0, 5)) . ')</span>
-     <div class="seg"><a href="attendance.php?m=' . $ym . '" class="' . ($view === 'mine' ? 'on' : '') . '">My Attendance</a><a href="attendance.php?view=holidays&m=' . $ym . '" class="' . ($view === 'holidays' ? 'on' : '') . '">Company Holiday List</a></div>');
+     <div class="seg"><a href="attendance.php?m=' . $ym . '" class="' . ($view === 'mine' ? 'on' : '') . '">My Attendance</a></div>
+     <a href="attendance.php?view=holidays&m=' . $ym . '" class="btn btn-holiday' . ($view === 'holidays' ? ' on' : '') . '">Company Holiday List</a>');
 ?>
 <?php if ($view === 'holidays'): ?>
 <div class="head-actions no-print" style="margin:-8px 0 20px">
@@ -80,6 +81,14 @@ page_title('Attendance Calendar', 'Review your daily punch logs and company holi
     <span class="badge b-slate">● Week Off: <?= $sum['weekoff'] ?> day<?= $sum['weekoff'] == 1 ? '' : 's' ?> (<?= $wb['left'] ?> left<?= $wb['carry'] ? ', ' . $wb['carry'] . ' carried over' : '' ?>)</span>
     <a href="policy.php" style="margin-left:auto;font-size:12.5px;display:flex;gap:6px;align-items:center"><?= icon('shield', 14) ?> Attendance Policy Rules</a>
   </div>
+  <?php $pay = payroll_calc($user, $ym); $isCur = $ym === date('Y-m');
+        $paidAt = q_val('SELECT paid_at FROM payout_paid WHERE user_id=? AND pay_month=?', [$uid, $ym]); ?>
+  <div class="sal-row">
+    <div><span>Attendance Salary</span><b><?= e(money($pay['att_pay'])) ?></b></div>
+    <div<?= $pay['ot_payouts'] ? ' title="' . $pay['ot_payouts'] . ' extra payout(s) x ' . e(money($pay['daily'])) . ' (one day\'s basic pay)"' : '' ?>><span>Overtime Pay</span><b><?= e(money($pay['ot_pay'])) ?></b></div>
+    <div class="sal-net"><span>Net Salary<?= $isCur ? ' (so far)' : '' ?></span><b><?= e(money($pay['net'])) ?></b></div>
+    <div><span>Salary Date</span><b><?= $paidAt ? e(fmt_date($paidAt)) : '<span class="muted" style="font-weight:500">Not paid yet</span>' ?></b></div>
+  </div>
 </section>
 
 <div class="grid g-3-2" style="align-items:start">
@@ -115,6 +124,7 @@ page_title('Attendance Calendar', 'Review your daily punch logs and company holi
     </div>
   </div>
 
+  <div class="stack">
   <aside class="card detail" id="dayDetail">
     <div class="eyebrow" style="color:var(--brand)">Audit Log Details</div>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:6px 0 8px;flex-wrap:wrap">
@@ -166,7 +176,31 @@ page_title('Attendance Calendar', 'Review your daily punch logs and company holi
     <?php endif; ?>
 
   </aside>
+
+  </div>
 </div>
+
+  <?php $ot = month_overtime($days, (int)$user['required_min']);
+        $dayPay = round((float)$user['base_salary'] / 12 / (int)date('t', strtotime($first)), 2); ?>
+<section class="card mt" id="otPanel" style="border-top:3px solid var(--brand-d)">
+    <div class="eyebrow" style="color:var(--brand)">Overtime &middot; <?= e(date('F Y', strtotime($first))) ?></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:6px 0 4px;flex-wrap:wrap">
+      <h2 style="font-size:21px"><?= fmt_hm($ot['total_min'], false) ?> <small class="muted" style="font-size:13px;font-weight:500">total overtime</small></h2>
+      <span class="badge <?= $ot['payouts'] ? 'b-green' : 'b-slate' ?>"><?= $ot['payouts'] ?> extra payout<?= $ot['payouts'] === 1 ? '' : 's' ?></span>
+    </div>
+    <p class="muted" style="font-size:12.5px;margin-bottom:12px">Every <?= fmt_hm($ot['shift_min'], false) ?> of overtime in a month earns 1 extra day's payout.
+      <?= $ot['rem_min'] ? e(fmt_hm($ot['shift_min'] - $ot['rem_min'], false)) . ' more for the next one.' : '' ?></p>
+    <div class="kv" style="margin-bottom:10px"><span>One day's basic pay</span><b style="font-weight:500"><?= money($dayPay) ?></b></div>
+    <div class="kv" style="margin-bottom:12px"><span><b>Overtime payout</b> (<?= $ot['payouts'] ?> &times; <?= money($dayPay) ?>)</span><b><?= money($dayPay * $ot['payouts']) ?></b></div>
+    <?php if ($ot['rows']): ?>
+      <div class="box ot-list">
+        <?php foreach ($ot['rows'] as $od => $om): ?>
+          <div class="kv"><a href="attendance.php?m=<?= e($ym) ?>&date=<?= e($od) ?>#dayDetail" style="color:inherit"><?= e(date('D, M j', strtotime($od))) ?></a><b style="font-weight:500">+<?= e(fmt_hm($om, false)) ?></b></div>
+        <?php endforeach; ?>
+      </div>
+      <div class="kv" style="border-top:1px solid var(--line);padding-top:10px;margin-top:10px"><span><b>Total</b></span><b><?= fmt_hm($ot['total_min'], false) ?></b></div>
+    <?php else: ?><p class="empty">No overtime recorded this month.</p><?php endif; ?>
+  </section>
 
 <?php endif; ?>
 <?php render_footer(); ?>

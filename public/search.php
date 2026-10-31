@@ -24,7 +24,7 @@ if (mb_strlen($qs) >= 2) {
     $joinOpen = $isAdm || joining_letter_days_left($user['joined_on']) === 0 ? 1 : 0;
     $docs = q_all('SELECT d.id, d.title, d.category, d.file_name, u.name AS owner FROM documents d LEFT JOIN users u ON u.id=d.user_id
         WHERE (d.title LIKE ? OR d.file_name LIKE ? OR d.category LIKE ?) AND (? OR d.user_id IS NULL OR d.user_id=?)
-          AND (? OR d.category<>"Joining Letter") ORDER BY d.uploaded_at DESC LIMIT 10', [$like, $like, $like, $adm, $uid, $joinOpen]);
+          AND (? OR d.category<>"Appointment Letter") ORDER BY d.uploaded_at DESC LIMIT 10', [$like, $like, $like, $adm, $uid, $joinOpen]);
     $hols = q_all('SELECT * FROM holidays WHERE name LIKE ? ORDER BY holiday_date LIMIT 10', [$like]);
     $logs = q_all('SELECT log_date, tag, content FROM work_logs WHERE user_id=? AND (content LIKE ? OR tag LIKE ?) ORDER BY log_date DESC LIMIT 10', [$user['id'], $like, $like]);
     $anns = q_all('SELECT * FROM announcements WHERE title LIKE ? OR body LIKE ? ORDER BY posted_on DESC LIMIT 10', [$like, $like]);

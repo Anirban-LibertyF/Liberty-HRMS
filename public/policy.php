@@ -8,7 +8,7 @@ $sections = [
     '1. Office Hours' => 'Official working hours are 10:30 AM to 5:30 PM. Employees are expected to report on time and complete assigned duties during office hours.',
     '2. Weekly Offs' => 'Employees are entitled to 4 weekly holidays per month on a rotational basis. Only one weekly off may be taken in a week. Weekly offs should be coordinated with reporting managers based on operational requirements.',
     '3. Attendance & Salary Eligibility' => 'For a 30-day month, employees must work at least 26 days to receive full monthly salary. For a 31-day month, employees must work at least 27 days to receive full monthly salary. Unapproved absences may result in salary deductions according to company policy.',
-    '4. Annual Leave' => 'Employees are entitled to 15 paid leave days per calendar year, subject to manager approval and business requirements.',
+    '4. Annual Leave' => 'Employees are entitled to 18 paid leave days per calendar year, subject to manager approval and business requirements.',
     '5. Leave Application' => 'Leave other than the scheduled weekly off must be requested at least 3 days in advance. Leave is subject to approval. Emergency situations will be considered individually.',
     '6. Attendance Expectations' => 'Employees must maintain regular attendance, inform managers promptly of unexpected absences, and follow all attendance procedures.',
     '7. Conduct' => 'Employees are expected to maintain professionalism, respect colleagues, protect company property, and comply with company rules and applicable laws.',
@@ -19,12 +19,12 @@ render_header('HR Policy', 'documents', $user);
 ?>
 <div class="policy-banner"><img src="assets/img/logo.png" alt="Liberty Foundation - since 2008"><h1>HR Policy Manual</h1><span aria-hidden="true"></span></div>
 <?php
-page_title('HR Leave & Attendance Policy 2026', 'Official policy reference. Use your browser’s print dialog to save as PDF.',
+page_title('HR Leave & Attendance Policy ' . date('Y'), 'Official policy reference. Use your browser’s print dialog to save as PDF.',
     '<button class="btn btn-dark no-print" onclick="window.print()">' . icon('print', 16) . ' Print / Save PDF</button>');
 ?>
 <section class="card" style="max-width:820px;line-height:1.65">
   <h2 style="font-size:22px;margin-bottom:4px">HR Policy Manual</h2>
-  <p class="muted" style="margin-bottom:18px">Policy year 2026</p>
+  <p class="muted" style="margin-bottom:18px">Policy year <?= date('Y') ?></p>
   <?php foreach ($sections as $title => $text): ?>
     <h2 style="margin-top:18px"><?= e($title) ?></h2>
     <p class="muted"><?= e($text) ?></p>

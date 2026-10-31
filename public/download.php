@@ -30,10 +30,10 @@ if (!$allowed && !in_array($t, ['project', 'note'], true) && $user['role'] === '
 }
 if (!$allowed) { http_response_code(403); exit('Access denied.'); }
 
-// Joining letters stay locked for the owner (and their manager) until 90 days after joining; admins can always open it.
-if (($row['category'] ?? null) === 'Joining Letter' && $user['role'] !== 'admin') {
+// Appointment letters stay locked for the owner (and their manager) until 90 days after joining; admins can always open it.
+if (($row['category'] ?? null) === 'Appointment Letter' && $user['role'] !== 'admin') {
     $joinedOn = q_val('SELECT joined_on FROM users WHERE id=?', [$row['user_id']]);
-    if ($joinedOn && joining_letter_days_left($joinedOn) > 0) { http_response_code(403); exit('Your joining letter is not available yet. It unlocks 90 days after your date of joining.'); }
+    if ($joinedOn && joining_letter_days_left($joinedOn) > 0) { http_response_code(403); exit('Your appointment letter is not available yet. It unlocks 90 days after your date of joining.'); }
 }
 
 $base = realpath(cfg('upload_dir'));

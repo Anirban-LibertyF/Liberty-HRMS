@@ -183,16 +183,15 @@ try {
             [$name, $path] = store_upload($_FILES['file'] ?? ['error' => UPLOAD_ERR_NO_FILE], "docs/$uid");
             q('INSERT INTO documents (user_id, title, category, file_name, file_path, uploaded_by, uploaded_at) VALUES (?,?,?,?,?,?,NOW())', [$uid, mb_substr($title, 0, 200), mb_substr($cat, 0, 60), $name, $path, $uid]);
             done(true, 'Document uploaded.', 'documents.php');
-        case 'nda_upload':
-            if (!q_val('SELECT COUNT(*) FROM documents WHERE user_id=? AND category="NDA Letter"', [$uid])) done(false, 'Your NDA is not available yet.', 'documents.php');
+        case 'joining_upload':
             [$name, $path] = store_upload($_FILES['file'] ?? ['error' => UPLOAD_ERR_NO_FILE], "docs/$uid");
-            foreach (q_all('SELECT id, file_path FROM documents WHERE user_id=? AND category="NDA Signed"', [$uid]) as $old) {   // newest upload replaces the previous one
+            foreach (q_all('SELECT id, file_path FROM documents WHERE user_id=? AND category="Joining Letter"', [$uid]) as $old) {   // newest upload replaces the previous one
                 q('DELETE FROM documents WHERE id=?', [$old['id']]);
                 @unlink(cfg('upload_dir') . '/' . $old['file_path']);
             }
-            q('INSERT INTO documents (user_id, title, category, file_name, file_path, uploaded_by, uploaded_at) VALUES (?,?,?,?,?,?,NOW())', [$uid, 'Signed NDA', 'NDA Signed', $name, $path, $uid]);
-            foreach (q_all('SELECT id FROM users WHERE role="admin" AND status="active"') as $adm) notify((int)$adm['id'], "{$user['name']} uploaded the signed NDA.", 'admin_employee.php?id=' . $uid);
-            done(true, 'Signed NDA uploaded.', 'documents.php');
+            q('INSERT INTO documents (user_id, title, category, file_name, file_path, uploaded_by, uploaded_at) VALUES (?,?,?,?,?,?,NOW())', [$uid, 'Joining Letter', 'Joining Letter', $name, $path, $uid]);
+            foreach (q_all('SELECT id FROM users WHERE role="admin" AND status="active"') as $adm) notify((int)$adm['id'], "{$user['name']} uploaded their joining letter.", 'admin_employee.php?id=' . $uid);
+            done(true, 'Joining letter uploaded.', 'documents.php');
         case 'doc_delete':
             $d = q_one('SELECT * FROM documents WHERE id=? AND user_id=? AND uploaded_by=?', [(int)($_POST['id'] ?? 0), $uid, $uid]);
             if ($d) { q('DELETE FROM documents WHERE id=?', [$d['id']]); @unlink(cfg('upload_dir') . '/' . $d['file_path']); }

@@ -8,7 +8,7 @@ function calc_leave_days(string $from, string $to, bool $half): float
 {
     if ($to < $from) return 0.0;
     $n = count(working_dates($from, $to));
-    return $half ? ($n >= 1 ? 0.5 : 0.0) : (float)$n;
+    return (float)$n;   // whole days only - half-day leave is not offered
 }
 
 /** Per-type balances for a calendar year. "used" counts approved + pending requests. */

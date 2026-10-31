@@ -88,7 +88,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 </div>
 <p class="muted" style="text-align:center;font-size:13px;max-width:420px;margin:0 auto 30px">Need an account or authorization changes? <a href="support.php">Contact HR Operations</a> or your System Administrator.</p>
-<footer class="login-footer">&copy; <?= date('Y') ?> Liberty Foundation &middot; Liberty Office &mdash; Enterprise Workforce &amp; Attendance Suite</footer>
+<footer class="site-foot login-foot">
+  <span class="sf-logo"><img src="assets/img/logo.png" alt="Liberty Foundation" height="34"></span>
+  <div class="sf-text">
+    <p>&copy; <?= date('Y') ?> <b>Liberty Foundation</b>. All rights reserved.</p>
+    <p>Developed and Maintained by <b>Liberty Innovation</b></p>
+  </div>
+</footer>
 <div class="toast-wrap" id="toasts"></div>
 <script src="assets/js/app.js"></script>
 </body>

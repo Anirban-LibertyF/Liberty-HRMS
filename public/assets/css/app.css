@@ -682,6 +682,8 @@ form.search.open:focus-within{border-color:var(--brand);box-shadow:0 0 0 2px var
 /* ---- punch-in location + director's corner ---- */
 .loc-field{margin-bottom:10px}
 .loc-field label{display:block;font-size:12px;font-weight:600;margin-bottom:4px}
+.loc-field .input{border:2px solid #f5b400}
+.loc-field .input:focus{border-color:#f5b400;box-shadow:0 0 0 3px rgba(245,180,0,.3)}
 .director{display:flex;gap:16px;align-items:flex-start}
 .director img,.director .ph{width:84px;height:84px;border-radius:12px;object-fit:cover;flex:0 0 auto;background:var(--brand-l);color:var(--brand);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:26px}
 .director blockquote{margin:0;font-style:italic;line-height:1.55}
@@ -806,7 +808,8 @@ form.search.open:focus-within{border-color:var(--brand);box-shadow:0 0 0 2px var
 }
 
 /* login: fixed navbar, always-visible footer, red sign-in button */
-.login-body{padding-top:68px;padding-bottom:52px}
+.login-body{padding-top:68px;padding-bottom:84px}
+.login-foot{position:fixed;left:0;right:0;bottom:0;z-index:50}
 .login-body .login-top{position:fixed;top:0;left:0;right:0;z-index:50}
 .login-footer{position:fixed;left:0;right:0;bottom:0;z-index:50;text-align:center;padding:14px 24px;font-size:12.5px;color:var(--ink-2);background:var(--surface);border-top:1px solid var(--line)}
 .btn-signin,html[data-mode=dark] .btn-signin{background:linear-gradient(180deg,#d63a3a,#c62828);border-color:#8e1b1b;color:#fff;box-shadow:0 4px 0 #8e1b1b,0 10px 18px rgba(198,40,40,.3)}
@@ -869,7 +872,7 @@ form.search.open:focus-within{border-color:var(--brand);box-shadow:0 0 0 2px var
 .att-total td{font-weight:700;background:var(--surface-2)}
 .att-note{margin:14px 0 0;font-size:12px;color:var(--muted)}
 @media print{.att-sheet{border:0;box-shadow:none;padding:0}.att-table{font-size:11px}.att-total td{background:#f1f3f6!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-@media(max-width:700px){.att-sheet-head{grid-template-columns:auto 1fr}.att-sheet-meta{display:none}.att-sheet-head h1{font-size:18px;text-align:right}}
+@media(max-width:700px){.att-sheet-head{gap:8px}.att-sheet-head img{height:38px}.att-sheet-head h1{font-size:16px}.att-sheet-meta{font-size:10.5px}.att-sheet-meta b{font-size:13px}}
 .att-carry{margin-top:22px}.att-carry h3{margin:0 0 10px;font-size:15px;border-left:4px solid var(--brand);padding-left:10px}
 
 /* monthly attendance sheet: print on a landscape A4 page without clipping any column */
@@ -890,3 +893,62 @@ form.search.open:focus-within{border-color:var(--brand);box-shadow:0 0 0 2px var
 }
 /* attendance sheet: employee code and name stay on a single line (also in print) */
 .att-table td.code,.att-table th:nth-child(3),.att-table td:nth-child(3),.att-table td:nth-child(2){white-space:nowrap!important}
+
+/* leave: apply modal + full-width history */
+.leave-dlg{max-width:560px;width:94vw;background:transparent}
+.leave-dlg>form.card{margin:0;max-height:90vh;overflow:auto}
+.apply-card{display:flex;flex-direction:column;justify-content:space-between}
+
+/* attendance: Company Holiday List button - faded red, full red on hover / click, pinned to the far right of the header row */
+.btn-holiday,html[data-mode=dark] .btn-holiday{background:rgba(198,40,40,.6);border-color:rgba(142,27,27,.45);color:#fff;font-weight:600;margin-left:auto;transition:background .15s,border-color .15s}
+.btn-holiday:hover,.btn-holiday:active,.btn-holiday:focus-visible,.btn-holiday.on,html[data-mode=dark] .btn-holiday:hover{background:#c62828;border-color:#8e1b1b;color:#fff;text-decoration:none}
+@media(min-width:861px){.head-actions:has(.btn-holiday){flex:1;flex-wrap:nowrap}}
+
+/* attendance: overtime list - 3 columns, 10 rows each (fills down, then across) */
+.ot-list{display:grid;grid-auto-flow:column;grid-template-rows:repeat(10,auto);grid-template-columns:repeat(3,minmax(0,1fr));column-gap:28px}
+@media(max-width:860px){.ot-list{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:minmax(0,1fr)}}
+
+/* admin attendance sheet: Paid button */
+.btn-paid{background:#2e7d32;border-color:#1b5e20;color:#fff}.btn-paid:hover{background:#256628;color:#fff}
+.att-table td.no-print form{margin:0}
+
+/* admin attendance sheet on screen: Employee Name is its own fixed table on the left, the other columns scroll sideways beside it.
+   Every row has the same fixed height so the two tables line up. Print uses the single full table instead. */
+.att-split{display:flex;align-items:flex-start}
+.att-split .table-wrap{flex:1 1 auto;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+.att-names{flex:0 0 190px;width:190px;min-width:0!important;box-shadow:3px 0 5px -2px rgba(15,30,45,.15);position:relative;z-index:1;background:var(--surface)}
+.att-names td,.att-main td{height:72px;box-sizing:border-box;padding-top:0!important;padding-bottom:0!important}
+.att-names th,.att-main th{height:46px;box-sizing:border-box;padding-top:0!important;padding-bottom:0!important}
+.att-names td,.att-names th{text-align:left!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.att-names .n-no{width:40px;max-width:40px;text-align:center!important;padding-left:6px!important;padding-right:6px!important}
+.att-main{min-width:1100px}
+.att-main th:nth-child(-n+2),.att-main td[data-label="#"],.att-main td[data-label="Employee"]{display:none}
+.att-main td,.att-main th{white-space:nowrap}
+.att-total td{font-weight:700;background:var(--surface-2)}
+@media(max-width:700px){
+  form.head-actions .input,form.head-actions .btn{flex:1 1 140px;width:auto!important;min-width:0}
+  .att-sheet{padding:14px;min-width:0}
+  .att-names{flex-basis:170px;width:170px;min-width:0!important}
+  .att-names td,.att-names th{padding-left:8px!important;padding-right:8px!important}
+}
+@media print{
+  .att-names{display:none!important}
+  .att-main{min-width:0!important}
+  .att-main th:nth-child(-n+2),.att-main td[data-label="#"],.att-main td[data-label="Employee"]{display:table-cell!important}
+  .att-main td,.att-main th{height:auto!important}
+}
+
+/* no text selection anywhere except form fields and the rich-text editor */
+html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea,select,[contenteditable=""],[contenteditable="true"],.rte-edit,.rte-edit *{-webkit-user-select:text;user-select:text}
+img{-webkit-user-drag:none}
+
+.paid-date .input{width:auto;min-width:140px;padding:6px 8px;font-size:12.5px}
+
+/* attendance: salary summary - 4 values on one line */
+.sal-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.sal-row>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sal-row span{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.sal-row b{font-size:16px}
+.sal-row .sal-net b{color:#2e7d32}
+@media(max-width:700px){.sal-row{gap:8px}.sal-row span{font-size:9.5px;letter-spacing:0}.sal-row b{font-size:13px}}

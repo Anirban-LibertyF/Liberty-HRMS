@@ -36,7 +36,7 @@ function employee_fields_from_post(array $p, ?int $editingId = null): array
         'employment_type' => in_array($p['employment_type'] ?? '', ['Full-time', 'Part-time', 'Contract', 'Intern'], true) ? $p['employment_type'] : 'Full-time',
         'work_location' => mb_substr(trim((string)($p['work_location'] ?? 'Headquarters')), 0, 80) ?: 'Headquarters',
         'joined_on' => trim((string)($p['joined_on'] ?? '')),
-        'base_salary' => max(0, (float)($p['base_salary'] ?? 0)),
+        'base_salary' => round(max(0, (float)($p['monthly_salary'] ?? 0)) * 12, 2),   // stored as the annual figure
     ];
     $date = fn($d) => (bool)preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$d) && checkdate((int)substr($d, 5, 2), (int)substr($d, 8, 2), (int)substr($d, 0, 4));
     if ($f['name'] === '') return [$f, 'Full name is required.'];

@@ -80,7 +80,7 @@ try {
             $type = q_one('SELECT * FROM leave_types WHERE id=?', [(int)($_POST['leave_type_id'] ?? 0)]);
             $from = (string)($_POST['from_date'] ?? '');
             $to = (string)($_POST['end_date'] ?? '') ?: $from;
-            $half = !empty($_POST['half_day']);
+            $half = false;   // half-day leave is not offered
             if ($half) $to = $from;
             $reason = trim((string)($_POST['reason'] ?? ''));
             $draftId = (int)($_POST['draft_id'] ?? 0) ?: null;
@@ -123,7 +123,7 @@ try {
             $wlBack = safe_next($_POST['back'] ?? null, 'worklog.php?date=' . $date);
             if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || $date > today() || $date < date('Y-m-d', strtotime('-14 days'))) done(false, 'Work logs can be edited for the last 14 days only.', $wlBack);
             $row = q_one('SELECT * FROM work_logs WHERE user_id=? AND log_date=?', [$uid, $date]);
-            if ($row && in_array($row['status'], ['submitted', 'approved'], true)) done(false, 'This log was already submitted and is locked.', $wlBack);
+            if ($row && $row['status'] === 'approved') done(false, 'This log was already approved and is locked.', $wlBack);
             $content = mb_substr(trim((string)($_POST['content'] ?? ($row['content'] ?? ''))), 0, 4000);
             $tag = mb_substr(trim((string)($_POST['tag'] ?? ($row['tag'] ?? ''))), 0, 100);
 
@@ -136,7 +136,7 @@ try {
                 [$aName, $aPath] = store_upload($_FILES['file'] ?? ['error' => UPLOAD_ERR_NO_FILE], "worklogs/$uid");
             }
             if ($do === 'worklog_submit' && mb_strlen($content) < 5) done(false, 'Write at least a short summary before submitting.', $wlBack);
-            $status = $do === 'worklog_submit' ? 'submitted' : 'draft';
+            $status = ($do === 'worklog_submit' || ($row && $row['status'] === 'submitted')) ? 'submitted' : 'draft';
             q('INSERT INTO work_logs (user_id, log_date, content, tag, attach_name, attach_path, status, updated_at) VALUES (?,?,?,?,?,?,?,NOW())
                ON DUPLICATE KEY UPDATE content=VALUES(content), tag=VALUES(tag), attach_name=VALUES(attach_name), attach_path=VALUES(attach_path), status=VALUES(status), updated_at=NOW()',
                 [$uid, $date, $content, $tag, $aName, $aPath, $status]);

@@ -123,12 +123,12 @@ function render_header(string $title, string $active, array $user, array $opts =
     <header class="topbar">
       <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu"><svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
       <a class="top-logo" href="<?= $isAdm ? 'admin.php' : 'index.php' ?>" aria-label="Liberty Office home"><img src="assets/img/logo.png" alt="Liberty Foundation - since 2008" width="120" height="38"></a>
-      <?php if ($isAdm): ?><div class="search" style="font-weight:600;color:var(--brand-ink)">Administrator Console</div><?php else: ?>
+      <?php if ($isAdm): ?><div class="search" style="font-weight:600;color:var(--brand-ink)">Administrator Console</div><?php endif; ?>
       <form class="search<?= !empty($_GET['q']) ? ' open' : '' ?>" id="topSearch" action="search.php" method="get" role="search">
         <button type="button" class="icon-btn search-toggle" id="searchToggle" aria-label="Search" aria-expanded="false"><?= icon('search', 20) ?></button>
-        <input type="search" name="q" id="searchInput" placeholder="Search logs, policies, shifts, coworkers..." value="<?= e($_GET['q'] ?? '') ?>" aria-label="Search" minlength="2" autocomplete="off">
+        <input type="search" name="q" id="searchInput" placeholder="Search people, ID, projects, expenses, documents..." value="<?= e($_GET['q'] ?? '') ?>" aria-label="Search" minlength="2" autocomplete="off">
       </form>
-      <?php endif; ?>
+      
       <div class="top-right">
         <?php if (!$isAdm): ?>
         <span class="pill pill-status <?= $state === 'in' ? 'is-on' : ($state === 'break' ? 'is-break' : '') ?>" id="topStatus">

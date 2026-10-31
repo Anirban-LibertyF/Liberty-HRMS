@@ -85,7 +85,9 @@ page_title('Documents', 'Company policies and your personal records in one place
         <?php if ((int)$d['uploaded_by'] === $uid): ?><form method="post" action="actions.php" data-confirm="Delete this document?"><?= csrf_field() ?><input type="hidden" name="do" value="doc_delete"><input type="hidden" name="id" value="<?= $d['id'] ?>"><button class="icon-btn" aria-label="Delete"><?= icon('trash', 16) ?></button></form><?php endif; ?></div>
     <?php endforeach; ?>
     <?php if (!$mine): ?><p class="empty">No personal documents uploaded.</p><?php endif; ?>
-    <form method="post" action="actions.php" enctype="multipart/form-data" style="margin-top:18px">
+    <hr class="doc-divider">
+    <h3 style="margin:0 0 12px;font-size:15px">Add new document</h3>
+    <form method="post" action="actions.php" enctype="multipart/form-data">
       <?= csrf_field() ?><input type="hidden" name="do" value="doc_upload">
       <div class="field-row field"><div><label class="f">Title</label><input class="input" name="title" required maxlength="200" placeholder="e.g. Address proof"></div>
         <div><label class="f">Category</label><select class="input" name="category"><option>Identity</option><option>Education</option><option>Employment</option><option>Medical</option><option>General</option></select></div></div>

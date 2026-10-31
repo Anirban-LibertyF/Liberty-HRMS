@@ -35,8 +35,8 @@ echo "Schema created.\n";
 // 3. reference data (always loaded)
 foreach (support_default_faqs() as $i => [$fq, $fa]) q('INSERT INTO support_faqs (question, answer, sort_order) VALUES (?,?,?)', [$fq, $fa, $i + 1]);
 q('INSERT INTO shifts (id, name, label, start_time, end_time, required_min, break_allow_min, grace_min) VALUES (1,"General","Standard 7H Shift","10:30:00","17:30:00",420,60,15)');
-foreach ([['SL', 'Sick Leave', 'Active Cycle', 8, 1, '#c62828', 1], ['PL', 'Paid Leave', 'Calendar Year', 12, 1, '#8e1b1b', 2],
-          ['LOP', 'Unpaid / LOP', 'Zero Impact', 0, 0, '#94a3b8', 3]] as $t) {
+foreach ([['PL', 'Paid Leave', 'Calendar Year', 15, 1, '#8e1b1b', 1],
+          ['LOP', 'Unpaid / LOP', 'Zero Impact', 0, 0, '#94a3b8', 2]] as $t) {
     q('INSERT INTO leave_types (code, name, badge, quota, is_paid, color, sort_order) VALUES (?,?,?,?,?,?,?)', $t);
 }
 foreach ([['2026-01-01', "New Year's Day"], ['2026-01-26', 'Republic Day'], ['2026-03-04', 'Holi'], ['2026-08-15', 'Independence Day'], ['2026-10-02', 'Gandhi Jayanti'],
@@ -83,10 +83,10 @@ $typeId = fn(string $code) => (int)q_val('SELECT id FROM leave_types WHERE code=
 // 5. leave history  [user, type, start offset (days), working days, half, status, reason, note]
 $leaves = [
     [$alex, 'PL', -60, 3, 0, 'approved', 'Summer holiday trip', 'Enjoy!'], [$alex, 'PL', -38, 1, 1, 'approved', 'Personal bank appointment', ''],
-    [$alex, 'SL', -14, 2, 0, 'approved', 'Viral infection with bed rest advised', 'Get well soon.'], [$alex, 'PL', -22, 1, 0, 'rejected', 'Family function', 'Release deadline that day, please reschedule.'],
+    [$alex, 'PL', -14, 2, 0, 'approved', 'Viral infection with bed rest advised', 'Get well soon.'], [$alex, 'PL', -22, 1, 0, 'rejected', 'Family function', 'Release deadline that day, please reschedule.'],
     [$alex, 'PL', 3, 2, 0, 'pending', 'Family commitment out of town', ''],
     [$marcus, 'PL', -30, 3, 0, 'approved', 'Family wedding event', ''], [$marcus, 'PL', 5, 2, 0, 'pending', 'Long weekend break', ''],
-    [$priya, 'SL', -9, 1, 0, 'approved', 'Migraine', ''], [$sarah, 'PL', -45, 4, 0, 'approved', 'Annual vacation', ''], [$david, 'LOP', -20, 1, 0, 'approved', 'Personal work', ''],
+    [$priya, 'PL', -9, 1, 0, 'approved', 'Migraine', ''], [$sarah, 'PL', -45, 4, 0, 'approved', 'Annual vacation', ''], [$david, 'LOP', -20, 1, 0, 'approved', 'Personal work', ''],
 ];
 foreach ($leaves as [$uid, $code, $off, $n, $half, $status, $reason, $note]) {
     $from = $workday(date('Y-m-d', strtotime("$today $off days")));
@@ -158,7 +158,7 @@ q('INSERT INTO announcements (dept, title, body, posted_on, created_by) VALUES (
 q('INSERT INTO announcements (dept, title, body, posted_on, created_by) VALUES (?,?,?,?,?)', ['HR Operations', 'Welcome to Liberty Office', 'Punch in and out, apply for leave and submit daily work logs from one place. Contact HR Operations with any questions.', date('Y-m-d', strtotime('-20 days')), $admin]);
 
 q('INSERT INTO activity_log (user_id, icon, title, detail, created_at) VALUES (?,?,?,?,?)', [$alex, 'log', 'Work Log Approved (Yesterday)', 'Sprint manager Sarah Jenkins signed off on daily log.', date('Y-m-d H:i:s', strtotime('yesterday 18:45'))]);
-q('INSERT INTO activity_log (user_id, icon, title, detail, created_at) VALUES (?,?,?,?,?)', [$alex, 'check', 'Leave approved', 'Sick Leave approved by Sarah Jenkins.', date('Y-m-d H:i:s', strtotime('-12 days 11:05'))]);
+q('INSERT INTO activity_log (user_id, icon, title, detail, created_at) VALUES (?,?,?,?,?)', [$alex, 'check', 'Leave approved', 'Paid Leave approved by Sarah Jenkins.', date('Y-m-d H:i:s', strtotime('-12 days 11:05'))]);
 foreach ([$sarah, $admin] as $rv) {
     notify($rv, 'Alex Morgan applied for Paid Leave.', 'admin.php?tab=approvals');
     notify($rv, 'Marcus Vance applied for Paid Leave.', 'admin.php?tab=approvals');

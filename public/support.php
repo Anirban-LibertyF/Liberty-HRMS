@@ -13,7 +13,7 @@ $body = function () use ($S, $faqs, $isAdm) { ?>
       <div class="kv"><span>Email</span><span><?= e($S['help_email']) ?></span></div>
       <div class="kv"><span>Phone</span><span><?= e($S['help_phone']) ?></span></div>
       <div class="kv"><span>Hours</span><span><?= e($S['help_hours']) ?></span></div>
-      <div class="kv"><span>HR Operations</span><span><?= e($S['hr_email']) ?></span></div></section>
+      <div class="kv"><span>HQ Center</span><span><?= e($S['hr_email']) ?></span></div></section>
     <section class="card" id="directors-corner"><div class="card-head"><h2><?= icon('user', 20) ?> Director's Corner</h2></div>
       <div class="director">
         <?php if ($S['dir_photo'] !== ''): ?><img src="support_photo.php?v=<?= substr(md5($S['dir_photo']), 0, 8) ?>" alt="<?= e($S['dir_name']) ?>" width="84" height="84"><?php elseif (is_file(__DIR__ . '/assets/img/director.jpg')): ?><img src="assets/img/director.jpg" alt="Director" width="84" height="84"><?php else: ?><span class="ph" aria-hidden="true"><?= e(mb_strtoupper(mb_substr($S['dir_name'], 0, 1))) ?></span><?php endif; ?>
@@ -32,7 +32,7 @@ $body = function () use ($S, $faqs, $isAdm) { ?>
       <div class="field-row field"><div><label class="f" for="sEmail">Email</label><input class="input" id="sEmail" name="help_email" maxlength="200" value="<?= e($S['help_email']) ?>"></div>
         <div><label class="f" for="sPhone">Phone</label><input class="input" id="sPhone" name="help_phone" maxlength="60" value="<?= e($S['help_phone']) ?>"></div></div>
       <div class="field-row field"><div><label class="f" for="sHours">Hours</label><input class="input" id="sHours" name="help_hours" maxlength="120" value="<?= e($S['help_hours']) ?>"></div>
-        <div><label class="f" for="sHr">HR Operations email</label><input class="input" id="sHr" name="hr_email" maxlength="200" value="<?= e($S['hr_email']) ?>"></div></div>
+        <div><label class="f" for="sHr">HQ Center address</label><input class="input" id="sHr" name="hr_email" maxlength="200" value="<?= e($S['hr_email']) ?>"></div></div>
       <h3 style="margin:18px 0 10px">Director's Corner</h3>
       <div class="field"><label class="f" for="sQuote">Quote</label><textarea class="input" id="sQuote" name="dir_quote" rows="3" maxlength="600"><?= e($S['dir_quote']) ?></textarea></div>
       <div class="field-row field"><div><label class="f" for="sName">Name</label><input class="input" id="sName" name="dir_name" maxlength="100" value="<?= e($S['dir_name']) ?>"></div>

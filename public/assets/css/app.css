@@ -345,7 +345,7 @@ dialog::backdrop{background:rgba(15,30,45,.45)}
   .icon-btn.menu-btn{display:grid}
   .content{padding:18px 14px}
   .topbar{padding:10px 14px;gap:8px}
-  .search{display:none}
+  div.search{display:none}
   .top-punch{display:none}
   .pill-status{padding:4px 9px;font-size:10.5px}
   .g-4,.g-3,.g-2{grid-template-columns:minmax(0,1fr)}
@@ -459,7 +459,6 @@ body.theme-admin{--brand:#1d4ed8;--brand-d:#1e3a8a;--brand-l:#e3ecff;--mint:#e3e
 @media(max-width:860px){
   .top-logo{margin-right:auto}
   .top-logo img{height:32px}
-  .topbar .search{display:none}
 }
 @media(max-width:380px){.top-logo img{height:28px}}
 .brand-icon{width:44px;height:44px;flex:none;display:block;object-fit:contain}
@@ -812,3 +811,82 @@ form.search.open:focus-within{border-color:var(--brand);box-shadow:0 0 0 2px var
 .login-footer{position:fixed;left:0;right:0;bottom:0;z-index:50;text-align:center;padding:14px 24px;font-size:12.5px;color:var(--ink-2);background:var(--surface);border-top:1px solid var(--line)}
 .btn-signin,html[data-mode=dark] .btn-signin{background:linear-gradient(180deg,#d63a3a,#c62828);border-color:#8e1b1b;color:#fff;box-shadow:0 4px 0 #8e1b1b,0 10px 18px rgba(198,40,40,.3)}
 .btn-signin:hover{box-shadow:0 6px 0 #8e1b1b,0 14px 22px rgba(198,40,40,.35)}
+@media(max-width:860px){
+  form.search.open{width:min(380px,58vw)}
+  .topbar{flex-wrap:nowrap}
+}
+/* smaller top-bar status pill ("Not Checked In" etc.) */
+.topbar .pill-status{padding:3px 9px;font-size:11px;gap:5px}
+.topbar .pill-status i{width:6px;height:6px}
+@media(max-width:860px){.topbar .pill-status{padding:2px 7px;font-size:9.5px}}
+/* HR policy page: logo top-left, heading centred (also in print) */
+.policy-banner{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;max-width:820px;margin:0 0 18px;padding-bottom:14px;border-bottom:2px solid var(--brand)}
+.policy-banner img{height:56px;width:auto;justify-self:start;display:block}
+.policy-banner h1{margin:0;text-align:center;font-size:26px}
+@media(max-width:600px){.policy-banner{grid-template-columns:auto 1fr}.policy-banner span{display:none}.policy-banner img{height:40px}.policy-banner h1{font-size:19px}}
+@media print{.policy-banner{display:grid!important}}
+/* My Documents: red line between uploaded list and the add-new form */
+.doc-divider{border:0;border-top:2px solid #c62828;margin:20px 0 16px}
+
+/* ---- payslip (Zoho-style layout) ---- */
+.ps{max-width:860px;padding:34px 38px;line-height:1.4}
+.ps-head{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:1px solid var(--line);padding-bottom:18px}
+.ps-org{display:flex;align-items:center;gap:16px}
+.ps-org img{height:52px;width:auto;display:block}
+.ps-org h1{font-size:26px;margin:0}.ps-org p{margin:2px 0 0;color:var(--muted);font-size:15px}
+.ps-month{text-align:right}.ps-month span{display:block;color:var(--muted);font-size:15px}.ps-month b{font-size:23px}
+.ps-summary{display:grid;grid-template-columns:1.15fr 1fr;gap:28px;align-items:start;padding:26px 0 24px;border-bottom:1px dashed var(--line)}
+.ps h3{font-size:13.5px;letter-spacing:.02em;color:var(--ink-2);margin:0 0 12px}
+.ps dl{display:grid;grid-template-columns:150px 1fr;row-gap:12px;margin:0;font-size:15px}
+.ps dt{color:var(--muted)}.ps dd{margin:0}
+.ps dt::after{content:"";}
+.ps-summary>div:first-child dd::before{content:": ";color:var(--muted);margin-right:6px}
+.ps-net{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ps-net-top{background:var(--brand-l);padding:20px 22px;border-left:4px solid var(--brand);margin:20px 0 0 20px;border-radius:2px}
+.ps-net-top b{display:block;font-size:30px;font-weight:600}.ps-net-top span{color:var(--brand-ink);font-size:15px}
+.ps-net dl{grid-template-columns:110px 1fr;padding:18px 22px 20px;border-top:1px dashed var(--line);margin-top:18px}
+.ps-net dd::before{content:": ";color:var(--muted);margin-right:6px}
+.ps-table{display:grid;grid-template-columns:1fr 1fr;gap:28px;border:1px solid var(--line);border-radius:12px;padding:6px 22px 0;margin-top:28px;overflow:hidden}
+.ps-row{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:8px;padding:13px 0;font-size:14.5px;align-items:center}
+.ps-row b{text-align:right}.ps-row>span:last-child{text-align:right}
+.ps-th{font-weight:700;font-size:13px;border-bottom:1px dashed var(--line);padding-top:14px}
+.ps-th span:not(:first-child){text-align:right}
+.ps-total{background:var(--surface-2);margin:8px -22px 0;padding:14px 22px;font-weight:700}
+.ps-payable{display:flex;justify-content:space-between;align-items:stretch;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:30px}
+.ps-payable>div{padding:16px 22px}.ps-payable b{display:block;font-size:15px}.ps-payable span{color:var(--muted);font-size:14px}
+.ps-payable strong{background:var(--brand-l);display:flex;align-items:center;padding:0 28px;font-size:19px}
+.ps-words{text-align:right;margin:20px 0 0;font-size:15px}.ps-words span{color:var(--muted)}
+.ps-foot{text-align:center;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);margin:26px 0 0;padding-top:20px}
+@media(max-width:720px){.ps{padding:20px 16px}.ps-head,.ps-summary,.ps-table{grid-template-columns:1fr;display:grid}.ps-month{text-align:left}.ps-payable strong{padding:0 16px}.ps-words{text-align:left}}
+@media print{.ps{border:0;box-shadow:none;padding:0;max-width:none}.ps-net-top,.ps-total,.ps-payable strong{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+
+/* ---- monthly attendance sheet ---- */
+.att-sheet-head{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;border-bottom:2px solid var(--brand);padding-bottom:14px;margin-bottom:16px}
+.att-sheet-head img{height:54px;width:auto;justify-self:start}
+.att-sheet-head h1{margin:0;font-size:24px;text-align:center}
+.att-sheet-meta{text-align:right;display:flex;flex-direction:column;font-size:13px;color:var(--muted)}.att-sheet-meta b{font-size:17px;color:var(--ink)}
+.att-table th,.att-table td{text-align:center}.att-table th:nth-child(2),.att-table td:nth-child(2),.att-table th:nth-child(4),.att-table td:nth-child(4){text-align:left}
+.att-total td{font-weight:700;background:var(--surface-2)}
+.att-note{margin:14px 0 0;font-size:12px;color:var(--muted)}
+@media print{.att-sheet{border:0;box-shadow:none;padding:0}.att-table{font-size:11px}.att-total td{background:#f1f3f6!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media(max-width:700px){.att-sheet-head{grid-template-columns:auto 1fr}.att-sheet-meta{display:none}.att-sheet-head h1{font-size:18px;text-align:right}}
+.att-carry{margin-top:22px}.att-carry h3{margin:0 0 10px;font-size:15px;border-left:4px solid var(--brand);padding-left:10px}
+
+/* monthly attendance sheet: print on a landscape A4 page without clipping any column */
+.att-sheet{page:attsheet}
+@page attsheet{size:A4 landscape;margin:10mm}
+@media print{
+  html,body{background:#fff!important}
+  .main,.content{display:block!important;width:100%!important;max-width:none!important;margin:0!important;padding:0!important}
+  .att-sheet{padding:0!important;margin:0!important;border:0!important;width:100%!important;max-width:none!important}
+  .att-sheet .table-wrap{overflow:visible!important}
+  .att-table{width:100%!important;table-layout:auto;font-size:10.5px!important}
+  .att-table th,.att-table td{padding:5px 4px!important;white-space:normal!important}
+  .att-table th{font-size:9px!important;letter-spacing:0!important}
+  .att-table tr{break-inside:avoid;page-break-inside:avoid}
+  .att-table thead{display:table-header-group}
+  .att-sheet-head{break-after:avoid}
+  .att-carry{break-inside:avoid}
+}
+/* attendance sheet: employee code and name stay on a single line (also in print) */
+.att-table td.code,.att-table th:nth-child(3),.att-table td:nth-child(3),.att-table td:nth-child(2){white-space:nowrap!important}

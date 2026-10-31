@@ -7,7 +7,7 @@ $uid = (int)$user['id'];
 $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'] ?? '') ? $_GET['date'] : today();
 if ($date > today()) $date = today();
 $log = q_one('SELECT wl.*, rv.name AS reviewer FROM work_logs wl LEFT JOIN users rv ON rv.id=wl.reviewed_by WHERE wl.user_id=? AND wl.log_date=?', [$uid, $date]);
-$editable = $date >= date('Y-m-d', strtotime('-14 days')) && (!$log || in_array($log['status'], ['draft', 'rejected'], true));
+$editable = $date >= date('Y-m-d', strtotime('-14 days')) && (!$log || in_array($log['status'], ['draft', 'submitted', 'rejected'], true));
 $hist = q_all('SELECT * FROM work_logs WHERE user_id=? ORDER BY log_date DESC LIMIT 30', [$uid]);
 $cls = ['draft' => 'b-slate', 'submitted' => 'b-amber', 'approved' => 'b-green', 'rejected' => 'b-red'];
 
@@ -25,7 +25,7 @@ page_title('Daily Work Log', 'Record deliverables and accomplishments for each w
     <div class="btn-row" style="align-items:center"><input class="input" style="max-width:300px" id="wlTag" name="tag" maxlength="100" placeholder="Tag (e.g. Sprint 34: Foundation)" value="<?= e($log['tag'] ?? '') ?>" <?= $editable ? '' : 'readonly' ?>>
       <span id="wlChips"><?php if (!empty($log['attach_name'])): ?><span class="chip"><span><?= e($log['attach_name']) ?></span><?php if ($editable): ?><button type="button" aria-label="Remove attachment">&times;</button><?php endif; ?></span> <a href="download.php?t=worklog&id=<?= $log['id'] ?>" style="font-size:12.5px">Download</a><?php endif; ?></span></div>
     <?php if ($editable): ?>
-      <div class="btn-row"><button type="button" class="btn" id="wlAttach"><?= icon('clip', 16) ?> Attach file</button><input type="file" id="wlFile" accept=".pdf,.png,.jpg,.jpeg" hidden><button class="btn btn-brand">Submit Work Log</button></div>
+      <div class="btn-row"><button type="button" class="btn" id="wlAttach"><?= icon('clip', 16) ?> Attach file</button><input type="file" id="wlFile" accept=".pdf,.png,.jpg,.jpeg" hidden><button class="btn btn-brand"><?= $log && $log['status'] === 'submitted' ? 'Update Work Log' : 'Submit Work Log' ?></button></div>
     <?php else: ?><p class="muted" style="margin-top:14px">This log is <?= $log ? e($log['status']) . ' and locked' : 'outside the 14-day edit window' ?>.</p><?php endif; ?>
   </form>
 

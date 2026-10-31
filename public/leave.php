@@ -25,7 +25,7 @@ foreach (q_all('SELECT status, COUNT(*) c FROM leave_requests WHERE user_id=? GR
 $hols = array_column(q_all('SELECT holiday_date FROM holidays'), 'holiday_date');
 
 $cardMeta = [
-    'SL' => ['Active Cycle', 'shield', 'b-mint'], 'PL' => ['Calendar Year', 'palm', 'b-blue'], 'LOP' => ['Zero Impact', 'x', 'b-blue'],
+    'PL' => ['Calendar Year', 'palm', 'b-blue'], 'LOP' => ['Zero Impact', 'x', 'b-blue'],
 ];
 $statusBadge = ['approved' => 'b-green', 'pending' => 'b-amber', 'rejected' => 'b-red', 'cancelled' => 'b-slate', 'draft' => 'b-slate'];
 
@@ -33,7 +33,7 @@ render_header('Leave Application', 'leave', $user);
 ?>
 <div class="page-head">
   <div><p class="muted" style="margin-bottom:6px">Workforce Management &nbsp;›&nbsp; <b style="color:var(--ink);font-weight:500">Leave &amp; Time Off</b></p>
-    <h1>Leave Application &amp; Management</h1><p class="muted">Manage leave balances, submit PTO and sickness requests, and track approval workflows.</p></div>
+    <h1>Leave Application &amp; Management</h1><p class="muted">Manage leave balances, submit paid leave requests, and track approval workflows.</p></div>
   <?php if ($ok): ?><div class="alert alert-ok" style="max-width:420px;margin:0"><?= icon('check', 22) ?><span><b>Request Submitted</b><br><small><?= e($ok) ?></small></span><button class="alert-x" aria-label="Dismiss"><?= icon('x', 16) ?></button></div><?php endif; ?>
 </div>
 
@@ -42,13 +42,13 @@ render_header('Leave Application', 'leave', $user);
     <div class="card lt-card" style="border-top-color:<?= $isLop ? '#94a3b8' : e($b['color']) ?>">
       <div class="lt-top"><h3><?= icon($ic, 20) ?> <span><?= e($b['name']) ?></span></h3><span class="badge <?= $cls ?>"><?= e($tag) ?></span></div>
       <?php if ($isLop): ?>
-        <div class="big"><?= rtrim(rtrim(number_format($b['used'], 1), '0'), '.') ?: '0' ?> <small>days taken</small></div>
+        <div class="big"><?= (int)ceil($b['used']) ?> <small>days taken</small></div>
         <p class="muted" style="font-size:12.5px">Loss of Pay accumulator (YTD)</p>
         <div class="meter" style="margin-top:14px"><i style="width:<?= min(100, $b['used'] * 10) ?>%"></i></div>
         <div class="lt-foot"><span>Salary deduction: <?= $b['used'] > 0 ? 'Applicable' : 'Nil' ?></span><b><?= $b['used'] > 0 ? 'Review' : 'Optimal' ?></b></div>
       <?php else: ?>
-        <div class="big"><?= rtrim(rtrim(number_format($b['remaining'], 1), '0'), '.') ?> <small>/ <?= rtrim(rtrim(number_format($b['quota'], 1), '0'), '.') ?> days</small></div>
-        <p class="muted" style="font-size:12.5px">Remaining balance (<?= rtrim(rtrim(number_format($b['used'], 1), '0'), '.') ?: '0' ?> days utilized)</p>
+        <div class="big"><?= (int)floor($b['remaining']) ?> <small>/ <?= rtrim(rtrim(number_format($b['quota'], 1), '0'), '.') ?> days</small></div>
+        <p class="muted" style="font-size:12.5px">Remaining balance (<?= (int)ceil($b['used']) ?> days utilized)</p>
         <div class="meter" style="margin-top:14px"><i style="width:<?= $b['pct'] ?>%;background:<?= e($b['color']) ?>"></i></div>
         <div class="lt-foot"><span>Accrued: <?= number_format((float)$b['quota'], 2) ?></span><b><?= $b['pct'] ?>% Available</b></div>
       <?php endif; ?>
@@ -71,14 +71,14 @@ render_header('Leave Application', 'leave', $user);
     <div class="field"><label class="f" for="lt">LEAVE TYPE <span class="req">*</span></label>
       <select class="input" id="lt" name="leave_type_id" required>
         <?php foreach ($types as $t): $b = $bal[$t['code']]; ?>
-          <option value="<?= $t['id'] ?>" <?= ($draft['leave_type_id'] ?? 0) == $t['id'] ? 'selected' : '' ?> <?= $t['code'] === 'PL' && !$draft ? 'selected' : '' ?>><?= e($t['name']) ?> <?= (float)$t['quota'] > 0 ? '(' . rtrim(rtrim(number_format($b['remaining'], 1), '0'), '.') . ' days remaining)' : '(no balance limit)' ?></option>
+          <option value="<?= $t['id'] ?>" <?= ($draft['leave_type_id'] ?? 0) == $t['id'] ? 'selected' : '' ?> <?= $t['code'] === 'PL' && !$draft ? 'selected' : '' ?>><?= e($t['name']) ?> <?= (float)$t['quota'] > 0 ? '(' . (int)floor($b['remaining']) . ' days remaining)' : '(no balance limit)' ?></option>
         <?php endforeach; ?>
       </select></div>
     <div class="field-row field">
       <div><label class="f" for="fd">FROM DATE <span class="req">*</span></label><input class="input" type="date" id="fd" name="from_date" required value="<?= e($draft['from_date'] ?? '') ?>" min="<?= date('Y-m-d', strtotime('-30 days')) ?>"></div>
       <div><label class="f" for="td">TO DATE <span class="req">*</span></label><input class="input" type="date" id="td" name="end_date" required value="<?= e($draft['end_date'] ?? '') ?>"></div>
     </div>
-    <div class="inline-note"><label><input type="checkbox" name="half_day" value="1" <?= !empty($draft['half_day']) ? 'checked' : '' ?>> Half Day Leave</label><span class="badge b-mint" id="duration" style="margin-left:auto">Duration: --</span></div>
+    <div class="inline-note"><span class="badge b-mint" id="duration" style="margin-left:auto">Duration: --</span></div>
     <div class="field"><div style="display:flex;justify-content:space-between"><label class="f" for="rs">REASON <span class="req">*</span></label><span class="muted" style="font-size:12px">Max 300 characters</span></div>
       <textarea class="input" id="rs" name="reason" maxlength="300" required placeholder="Provide detailed context for your leave request..."><?= e($draft['reason'] ?? '') ?></textarea></div>
     <div class="field"><label class="f">ATTACH SUPPORTING DOCUMENT (OPTIONAL)</label>

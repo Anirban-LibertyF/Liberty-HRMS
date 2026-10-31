@@ -59,7 +59,9 @@ page_title($isNew ? 'Add employee' : $emp['name'], $isNew ? 'The employee ID (LO
     <div class="field"><label class="f">Work location</label><input class="input" name="work_location" maxlength="80" value="<?= $v('work_location', 'Headquarters') ?>"></div>
     <div class="field"><label class="f">Shift</label><select class="input" name="shift_id"><?php foreach ($shifts as $s): ?><option value="<?= $s['id'] ?>" <?= $sel('shift_id', (string)$s['id']) ?>><?= e($s['name']) ?> (<?= e(substr($s['start_time'], 0, 5)) ?>–<?= e(substr($s['end_time'], 0, 5)) ?>)</option><?php endforeach; ?></select></div>
     <div class="field"><label class="f">Date of joining <span class="req">*</span></label><input class="input" type="date" name="joined_on" required value="<?= $v('joined_on', today()) ?>"></div>
-    <div class="field"><label class="f">Annual salary (₹)</label><input class="input" type="number" name="base_salary" min="0" step="1000" value="<?= $v('base_salary', '600000') ?>"></div>
+    <div class="field"><label class="f">Monthly salary (₹)</label><input class="input" type="number" id="monthlySalary" name="monthly_salary" min="0" step="0.01" required value="<?= e(isset($emp['base_salary']) ? rtrim(rtrim(number_format((float)$emp['base_salary'] / 12, 2, '.', ''), '0'), '.') : (isset($_SESSION['form_old']['base_salary']) ? rtrim(rtrim(number_format((float)$_SESSION['form_old']['base_salary'] / 12, 2, '.', ''), '0'), '.') : '50000')) ?>">
+      <small class="muted">Annual salary (auto): <b id="annualSalary">—</b></small></div>
+    <script>(function(){var m=document.getElementById("monthlySalary"),a=document.getElementById("annualSalary");function f(){var v=parseFloat(m.value);a.textContent=isNaN(v)?"—":"₹"+(v*12).toLocaleString("en-IN",{maximumFractionDigits:2})}m.addEventListener("input",f);f()})();</script>
   </div>
 
   <div class="eyebrow" style="margin:6px 0 10px">Sign-in</div>

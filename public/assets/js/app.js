@@ -348,7 +348,7 @@
   // leave form: live duration + reason counter
   const lf = $('#leaveForm');
   if (lf) {
-    const from = $('[name=from_date]', lf), to = $('[name=end_date]', lf), half = $('[name=half_day]', lf), out = $('#duration');
+    const from = $('[name=from_date]', lf), to = $('[name=end_date]', lf), out = $('#duration');
     const holidays = JSON.parse(lf.dataset.holidays || '[]');
     const calc = () => {
       if (!from.value || !to.value || to.value < from.value) { out.textContent = 'Duration: --'; return; }
@@ -357,11 +357,10 @@
         const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         if (!holidays.includes(iso)) n++;
       }
-      if (half.checked) n = n ? 0.5 : 0;
       out.textContent = 'Duration: ' + n + ' Working Day' + (n === 1 ? '' : 's');
     };
     from.addEventListener('change', () => { if (!to.value || to.value < from.value) to.value = from.value; calc(); });
-    [to, half].forEach((i) => i.addEventListener('change', () => { if (half.checked) to.value = from.value; calc(); }));
+    to.addEventListener('change', calc);
     calc();
   }
 

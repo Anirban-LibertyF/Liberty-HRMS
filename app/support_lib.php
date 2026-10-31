@@ -4,7 +4,7 @@ declare(strict_types=1);
 function support_defaults(): array
 {
     return [
-        'help_email' => 'helpdesk@enterprise.corp', 'help_phone' => '+1 (555) 010-4040', 'help_hours' => 'Mon–Fri · 08:00 – 20:00', 'hr_email' => 'hr-ops@enterprise.corp',
+        'help_email' => 'libertyfoundation4news@gmail.com', 'help_phone' => '+91 6289702130  ||  +91 8276015376', 'help_hours' => 'Mon-Sun · 10:30 am - 5:30 pm', 'hr_email' => 'Barrackpore , Kolkata,  700122, WB , IN',
         'dir_quote' => 'Great work is built one honest day at a time. Show up, own your craft, and lift the people around you.',
         'dir_name' => 'Director', 'dir_org' => 'Liberty Foundation', 'dir_photo' => '',
     ];

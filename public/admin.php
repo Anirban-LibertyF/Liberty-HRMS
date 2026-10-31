@@ -105,7 +105,8 @@ if (!$isAdmin): ?>
     <input class="input" type="date" name="date" value="<?= e($d) ?>" style="width:170px" onchange="this.form.submit()" aria-label="Date">
     <a class="btn btn-sm" href="admin.php?tab=attendance&date=<?= date('Y-m-d', strtotime("$d +1 day")) ?>">›</a>
     <input class="input" name="q" value="<?= e($q) ?>" placeholder="Search name, ID, department" style="width:240px"><button class="btn btn-sm">Search</button>
-    <span class="badge b-green">Present: <?= $present ?></span><span class="badge b-red">Absent: <?= $absent ?></span><span class="badge b-amber">On leave: <?= $cnt['leave'] ?? 0 ?></span></form>
+    <a class="btn btn-brand btn-sm" href="admin_attendance_report.php"><?= icon("calendar", 15) ?> Monthly Attendance</a>
+    <div style="flex-basis:100%;display:flex;gap:8px;flex-wrap:wrap"><span class="badge b-green">Present: <?= $present ?></span><span class="badge b-red">Absent: <?= $absent ?></span><span class="badge b-amber">On leave: <?= $cnt['leave'] ?? 0 ?></span></div></form>
   <section class="card"><div class="card-head"><h2><?= e(date('l, F j, Y', strtotime($d))) ?></h2></div>
     <div class="table-wrap"><table class="t"><thead><tr><th>Employee</th><th>Department</th><th>Status</th><th>Check in</th><th>Check out</th><th>Time worked</th><th>Break</th><th></th></tr></thead><tbody>
     <?php foreach ($roster as $r): ?>
@@ -260,7 +261,7 @@ if (!$isAdmin): ?>
 
 <?php elseif ($tab === 'payroll' && $isAdmin): ?>
   <section class="card" style="max-width:560px"><div class="card-head"><h2>Generate payslips</h2></div>
-    <p class="muted" style="margin-bottom:16px">Builds payslips for all active employees from annual salary, attendance (loss of pay for unexcused absences and unpaid leave) and overtime. Re-running a month recalculates it.</p>
+    <p class="muted" style="margin-bottom:16px">Builds payslips for all active employees from each employee's monthly salary and attendance. Present days, paid leave, holidays and week offs are paid; absences and unpaid leave are loss of pay (one day = monthly salary ÷ days in the month). Re-running a month recalculates it.</p>
     <form method="post" action="actions.php" data-confirm="Generate payslips for this month?"><?= csrf_field() ?><input type="hidden" name="do" value="admin_payroll_run"><input type="hidden" name="back" value="admin.php?tab=payroll">
       <div class="field"><label class="f">Month</label><input class="input" type="month" name="month" required value="<?= date('Y-m', strtotime('first day of last month')) ?>" max="<?= date('Y-m') ?>"></div>
       <button class="btn btn-brand">Run payroll</button></form></section>

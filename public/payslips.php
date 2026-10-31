@@ -8,30 +8,67 @@ $slips = q_all('SELECT * FROM payslips WHERE user_id=? ORDER BY pay_year DESC, p
 $view = null;
 if (!empty($_GET['id'])) $view = q_one('SELECT * FROM payslips WHERE id=? AND user_id=?', [(int)$_GET['id'], $uid]);
 if ($view) {
-    $gross = $view['basic'] + $view['hra'] + $view['allowances'];
-    $ded = $view['pf'] + $view['tax'] + $view['prof_tax'] + $view['lop_amount'];
+    $monthStart = sprintf('%04d-%02d-01', $view['pay_year'], $view['pay_month']);
+    $daysInMonth = (int)date('t', strtotime($monthStart));
+    $payDate = date('Y-m-t', strtotime($monthStart));
+    $lopDays = (float)$view['lop_days'];
+    $fmtDays = fn(float $d): string => rtrim(rtrim(number_format($d, 1), '0'), '.') ?: '0';
+    $gross = (float)$view['basic'] + (float)$view['hra'] + (float)$view['allowances'] + (float)$view['overtime_pay'];
+    $ded = (float)$view['pf'] + (float)$view['tax'] + (float)$view['prof_tax'] + (float)$view['lop_amount'];
+    // year-to-date totals up to and including this payslip's month
+    $ytdRow = q_one('SELECT SUM(basic) basic, SUM(hra) hra, SUM(allowances) allowances, SUM(overtime_pay) overtime_pay, SUM(pf) pf, SUM(tax) tax, SUM(prof_tax) prof_tax, SUM(lop_amount) lop_amount
+                     FROM payslips WHERE user_id=? AND pay_year=? AND pay_month<=?', [$uid, $view['pay_year'], $view['pay_month']]);
+    $ytd = fn(string $k): float => (float)($ytdRow[$k] ?? 0);
+    $earnings = [['Base Salary', 'basic'], ['House Rent Allowance', 'hra'], ['Special Allowances', 'allowances'], ['Overtime', 'overtime_pay']];
+    $deductions = [['Provident Fund', 'pf'], ['Income Tax (TDS)', 'tax'], ['Professional Tax', 'prof_tax'], ['Loss of Pay (' . $fmtDays($lopDays) . ' d)', 'lop_amount']];
 }
 
 render_header('Payslips', 'payslips', $user);
 if ($view): ?>
   <div class="no-print" style="margin-bottom:16px"><a href="payslips.php">← All payslips</a></div>
-  <section class="card slip">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:18px">
-      <div><img src="assets/img/logo.png" alt="Liberty Foundation" style="height:44px;width:auto;display:block;margin-bottom:6px"><h1 style="font-size:24px">Liberty Office</h1><p class="muted">Payslip for <?= e(date('F Y', mktime(0, 0, 0, (int)$view['pay_month'], 1, (int)$view['pay_year']))) ?></p></div>
-      <div style="text-align:right"><b><?= e($user['name']) ?></b><br><span class="muted"><?= e($user['emp_code']) ?> · <?= e($user['designation']) ?></span><br><span class="muted"><?= e($user['department']) ?></span></div>
+  <section class="card ps">
+    <div class="ps-head">
+      <div class="ps-org"><img src="assets/img/logo.png" alt="Liberty Foundation - since 2008"><div><h1>Liberty Foundation</h1><p>Barrackpore, Kolkata, 700122, WB, IN</p></div></div>
+      <div class="ps-month"><span>Payslip For the Month</span><b><?= e(date('F Y', strtotime($monthStart))) ?></b></div>
     </div>
-    <div class="grid g-2">
-      <div><div class="eyebrow">Earnings</div>
-        <div class="kv"><span>Basic</span><span><?= money($view['basic']) ?></span></div><div class="kv"><span>House Rent Allowance</span><span><?= money($view['hra']) ?></span></div>
-        <div class="kv"><span>Special Allowances</span><span><?= money($view['allowances']) ?></span></div><div class="kv"><span>Overtime (1.5x)</span><span><?= money($view['overtime_pay']) ?></span></div>
-        <div class="kv"><b>Gross + OT</b><b><?= money($gross + $view['overtime_pay']) ?></b></div></div>
-      <div><div class="eyebrow">Deductions</div>
-        <div class="kv"><span>Provident Fund (12%)</span><span><?= money($view['pf']) ?></span></div><div class="kv"><span>Income Tax (TDS)</span><span><?= money($view['tax']) ?></span></div>
-        <div class="kv"><span>Professional Tax</span><span><?= money($view['prof_tax']) ?></span></div><div class="kv"><span>Loss of Pay (<?= rtrim(rtrim(number_format((float)$view['lop_days'], 1), '0'), '.') ?: 0 ?> d)</span><span><?= money($view['lop_amount']) ?></span></div>
-        <div class="kv"><b>Total Deductions</b><b><?= money($ded) ?></b></div></div>
+
+    <div class="ps-summary">
+      <div>
+        <h3>EMPLOYEE SUMMARY</h3>
+        <dl>
+          <dt>Employee Name</dt><dd><?= e($user['name']) ?></dd>
+          <dt>Designation</dt><dd><?= e($user['designation']) ?></dd>
+          <dt>Employee ID</dt><dd><?= e($user['emp_code']) ?></dd>
+          <dt>Date of Joining</dt><dd><?= e(fmt_date($user['joined_on'], 'd/m/Y')) ?></dd>
+          <dt>Pay Period</dt><dd><?= e(date('F Y', strtotime($monthStart))) ?></dd>
+          <dt>Pay Date</dt><dd><?= e(fmt_date($payDate, 'd/m/Y')) ?></dd>
+        </dl>
+      </div>
+      <div class="ps-net">
+        <div class="ps-net-top"><b><?= money($view['net_pay']) ?></b><span>Employee Net Pay</span></div>
+        <dl>
+          <dt>Paid Days</dt><dd><?= e($fmtDays(max(0.0, $daysInMonth - $lopDays))) ?></dd>
+          <dt>LOP Days</dt><dd><?= e($fmtDays($lopDays)) ?></dd>
+        </dl>
+      </div>
     </div>
-    <div style="background:var(--brand-l);border-radius:10px;padding:18px;margin-top:20px;display:flex;justify-content:space-between;align-items:center"><span class="eyebrow" style="color:var(--brand-d)">Net Pay</span><b style="font-size:28px"><?= money($view['net_pay']) ?></b></div>
-    <p class="muted" style="font-size:12px;margin-top:14px">Generated <?= e(fmt_date($view['generated_at'], 'M d, Y h:i A')) ?>. This is a system-generated payslip and needs no signature.</p>
+
+    <div class="ps-table">
+      <div>
+        <div class="ps-row ps-th"><span>EARNINGS</span><span>AMOUNT</span><span>YTD</span></div>
+        <?php foreach ($earnings as [$label, $k]): ?><div class="ps-row"><span><?= e($label) ?></span><b><?= money($view[$k]) ?></b><span><?= money($ytd($k)) ?></span></div><?php endforeach; ?>
+        <div class="ps-row ps-total"><span>Gross Earnings</span><b><?= money($gross) ?></b><span></span></div>
+      </div>
+      <div>
+        <div class="ps-row ps-th"><span>DEDUCTIONS</span><span>AMOUNT</span><span>YTD</span></div>
+        <?php foreach ($deductions as [$label, $k]): ?><div class="ps-row"><span><?= e($label) ?></span><b><?= money($view[$k]) ?></b><span><?= money($ytd($k)) ?></span></div><?php endforeach; ?>
+        <div class="ps-row ps-total"><span>Total Deductions</span><b><?= money($ded) ?></b><span></span></div>
+      </div>
+    </div>
+
+    <div class="ps-payable"><div><b>TOTAL NET PAYABLE</b><span>Gross Earnings - Total Deductions</span></div><strong><?= money($view['net_pay']) ?></strong></div>
+    <p class="ps-words"><span>Amount In Words :</span> <?= e(amount_in_words((float)$view['net_pay'])) ?></p>
+    <p class="ps-foot">-- This document has been automatically generated by Liberty Office; therefore, a signature is not required. --</p>
     <div class="no-print btn-row"><button class="btn btn-dark" onclick="window.print()"><?= icon('print', 16) ?> Print / Save as PDF</button></div>
   </section>
 <?php else:

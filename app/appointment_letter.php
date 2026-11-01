@@ -8,10 +8,10 @@ declare(strict_types=1);
  * Only made available to the employee 90 days after their date of joining (see JOINING_LETTER_WAIT_DAYS in init.php / download.php).
  * The clause wording is a standard template - have it reviewed by the company's counsel before relying on it.
  */
-function appointment_letter_pdf(array $emp, ?string $managerName): string
+function appointment_letter_pdf(array $emp, ?string $managerName, ?int $issuedAt = null, string $remarks = ''): string
 {
     $mx = 52; $cw = 595 - 2 * $mx; $red = '0.78 0.16 0.16';
-    $issued = !empty($emp['created_at']) ? strtotime((string)$emp['created_at']) : time();   // the day the admin entered the employee's details
+    $issued = $issuedAt ?? time();   // the letter is dated the day it is generated
     $set = support_settings();
     $addr = (string)$set['hr_email'] !== '' && !str_contains((string)$set['hr_email'], '@') ? preg_replace('/\s*,\s*/', ', ', trim((string)$set['hr_email'])) : '';
     $footer = 'Liberty Foundation' . ($addr ? '  |  ' . $addr : '');
@@ -22,7 +22,7 @@ function appointment_letter_pdf(array $emp, ?string $managerName): string
     $dept = $emp['department'] . ($emp['team'] ? " ({$emp['team']})" : '');
     $join = date('F j, Y', strtotime($emp['joined_on']));
     $probEnd = date('F j, Y', strtotime($emp['joined_on'] . ' +3 months -1 day'));
-    $mgr = $managerName ?: 'the person designated by the Company';
+    $mgr = $managerName ?: DIRECTOR_REPORTING;
     $hrs = fn(string $t) => date('g:i A', strtotime($t));
     $shiftH = rtrim(rtrim(number_format($shift['required_min'] / 60, 1), '0'), '.');
 
@@ -66,7 +66,7 @@ function appointment_letter_pdf(array $emp, ?string $managerName): string
     [$p, $y] = $new();
     $y = $H($p, $y, '5. Core Job Responsibilities');
     $y = $P($p, $y, "As {$desig}, you shall perform the duties of the role and such other lawful duties as are assigned by $mgr or the management from time to time. Your responsibilities include, without limitation:");
-    $y = $L($p, $y, ["designing, developing, testing and delivering work in the {$emp['department']} function to the quality, timelines and standards set by the Company;", 'following the Company\'s processes, coding / quality standards, security practices and documentation requirements;', 'keeping your reporting manager informed of progress and risks, and maintaining a complete and accurate Daily Work Log;', 'collaborating with colleagues and clients professionally, and sharing knowledge within the team;', 'safeguarding the Company\'s assets, systems, data and reputation, and using them only for authorised business purposes; and', 'complying with all Company policies, applicable laws and the lawful instructions of the Company.']);
+    $y = $L($p, $y, job_duties_for($emp));
 
     $y = $H($p, $y, '6. Performance Review');
     $y = $P($p, $y, 'Your performance will be reviewed at the end of probation and thereafter at least once every year (the Company may also hold quarterly check-ins). Review metrics may include: (i) quality, accuracy and completeness of work; (ii) timely delivery against goals and project milestones; (iii) attendance, punctuality and Daily Work Log discipline; (iv) ownership, initiative and problem solving; (v) teamwork, communication and client feedback; and (vi) adherence to Company policies, security and confidentiality norms. Review outcomes may inform confirmation, role changes, the Variable Performance Bonus described in Annexure A and any revision of pay, none of which is guaranteed.');
@@ -107,23 +107,27 @@ function appointment_letter_pdf(array $emp, ?string $managerName): string
 
     $y = $H($p, $y, '16. General');
     $y = $P($p, $y, 'This letter, with Annexure A and the Company policies in force, is the entire agreement about your employment and replaces earlier discussions and offers. The Company may amend its policies from time to time, and may amend this letter by written notice. If any clause is held unenforceable, the rest remains in force and that clause is limited to the minimum extent necessary. Please sign and return a copy of this letter to HR as acceptance. Your appointment is conditional on satisfactory background verification and submission of the documents requested by HR.');
+    if (trim($remarks) !== '') { $y = $H($p, $y, '17. Additional Remarks'); $y = $P($p, $y, trim($remarks)); }
     $p->text($mx, $y - 16, 'We welcome you to Liberty Foundation and look forward to a long and rewarding association.', 9.3);
 
     // ============ PAGE 5: Annexure A + execution ============
     [$p, $y] = $new();
     $y = annexure_a($p, $y + 2, $emp, 'Appointment Letter');
-    execution_block($p, $y, 'Employee Acceptance and Execution', "I, $name, have read and understood this Appointment Letter and Annexure A in full, and I accept the appointment as {$desig} with Liberty Foundation on the terms stated, with effect from $join. I agree to be bound by the intellectual property, confidentiality, anti-moonlighting, non-compete and non-solicitation obligations. I confirm that the information and documents I have given to the Company are true and complete.");
+    execution_block($p, $y, 'Employee Acceptance and Execution', "I, $name, have read and understood this Appointment Letter and Annexure A in full, and I accept the appointment as {$desig} with Liberty Foundation on the terms stated, with effect from $join. I agree to be bound by the intellectual property, confidentiality, anti-moonlighting, non-compete and non-solicitation obligations. I confirm that the information and documents I have given to the Company are true and complete.", $name);
 
     return pdf_build($pages, $footer);
 }
 
 /** (Re)creates the employee's appointment letter and lists it under their Documents. Returns the documents row id. */
-function create_appointment_letter(int $userId): int
+function create_appointment_letter(int $userId, ?string $joinDate = null, string $remarks = '', ?int $issuedAt = null, array $duties = []): int
 {
     $emp = q_one('SELECT * FROM users WHERE id=? AND role <> "admin"', [$userId]);
     if (!$emp) throw new RuntimeException('Employee not found.');
+    if ($joinDate) $emp['joined_on'] = $joinDate;   // the date typed on the admin form, used in this letter only
+    if ($duties) $emp['job_duties'] = implode("
+", $duties);   // responsibilities edited on the admin form, used in this letter only
     $mgr = $emp['manager_id'] ? q_val('SELECT name FROM users WHERE id=?', [$emp['manager_id']]) : null;
-    $pdf = appointment_letter_pdf($emp, $mgr);
+    $pdf = appointment_letter_pdf($emp, $mgr, $issuedAt, $remarks);
 
     $dir = cfg('upload_dir') . "/docs/$userId";
     if (!is_dir($dir) && !mkdir($dir, 0775, true)) throw new RuntimeException('Could not create the documents folder.');

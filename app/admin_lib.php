@@ -15,6 +15,20 @@ function next_emp_code(): string
  * Validates the shared employee form (create + edit). Returns [clean fields, error|null].
  * The administrator role is never assignable: there is exactly one admin account.
  */
+/** Bank details from a form: [clean fields, error|null]. IFSC is upper-cased and checked (4 letters, 0, 6 letters/digits); the account number keeps digits only (9-18). */
+function bank_fields_from_post(array $p): array
+{
+    $f = [
+        'bank_name' => mb_substr(trim((string)($p['bank_name'] ?? '')), 0, 100),
+        'bank_account_no' => preg_replace('/\D/', '', (string)($p['bank_account_no'] ?? '')),
+        'bank_ifsc' => strtoupper(preg_replace('/\s/', '', (string)($p['bank_ifsc'] ?? ''))),
+        'bank_branch' => mb_substr(trim((string)($p['bank_branch'] ?? '')), 0, 100),
+    ];
+    if ($f['bank_account_no'] !== '' && (strlen($f['bank_account_no']) < 9 || strlen($f['bank_account_no']) > 18)) return [$f, 'Bank account number must be 9 to 18 digits.'];
+    if ($f['bank_ifsc'] !== '' && !preg_match('/^[A-Z]{4}0[A-Z0-9]{6}$/', $f['bank_ifsc'])) return [$f, 'Enter a valid IFSC code (for example SBIN0001234).'];
+    return [$f, null];
+}
+
 function employee_fields_from_post(array $p, ?int $editingId = null): array
 {
     $f = [
@@ -24,6 +38,9 @@ function employee_fields_from_post(array $p, ?int $editingId = null): array
         'department' => mb_substr(trim((string)($p['department'] ?? '')), 0, 80),
         'team' => mb_substr(trim((string)($p['team'] ?? '')), 0, 80),
         'designation' => mb_substr(trim((string)($p['designation'] ?? '')), 0, 120),
+        ...bank_fields_from_post($p)[0],
+        'job_roles' => implode(',', array_values(array_intersect(array_keys(job_role_catalog()), array_map('strval', (array)($p['job_roles'] ?? []))))) ?: null,
+        'job_duties' => mb_substr(trim(str_replace("\r", '', (string)($p['job_duties'] ?? ''))), 0, 2000) ?: null,
         'manager_id' => (int)($p['manager_id'] ?? 0) ?: null,
         'shift_id' => (int)($p['shift_id'] ?? 1) ?: 1,
         'phone' => mb_substr(preg_replace('/[^\d+\-\s()]/', '', (string)($p['phone'] ?? '')), 0, 30),
@@ -39,6 +56,7 @@ function employee_fields_from_post(array $p, ?int $editingId = null): array
         'base_salary' => round(max(0, (float)($p['monthly_salary'] ?? 0)) * 12, 2),   // stored as the annual figure
     ];
     $date = fn($d) => (bool)preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$d) && checkdate((int)substr($d, 5, 2), (int)substr($d, 8, 2), (int)substr($d, 0, 4));
+    if ($bankErr = bank_fields_from_post($p)[1]) return [$f, $bankErr];
     if ($f['name'] === '') return [$f, 'Full name is required.'];
     if (!filter_var($f['email'], FILTER_VALIDATE_EMAIL)) return [$f, 'Enter a valid email address.'];
     if (q_val('SELECT COUNT(*) FROM users WHERE email=? AND id<>?', [$f['email'], $editingId ?? 0])) return [$f, 'That email is already used by another account.'];
@@ -89,9 +107,12 @@ function roster_for_date(string $date, string $search = ''): array
 /** Button markup that opens the shared attendance editor (see attendance_editor_dialog). */
 function att_edit_button(array $emp, string $date, ?array $att, string $label = 'Edit'): string
 {
+    $isOff = is_weekoff((int)$emp['id'], $date);
+    $woLeft = weekoff_balance($emp, substr($date, 0, 7))['left'];   // the editor offers Week Off only while this month still has some left
     $data = [
         'uid' => (int)$emp['id'], 'name' => $emp['name'] . ' (' . $emp['emp_code'] . ')', 'date' => $date,
-        'status' => ($att || str_starts_with($label, '+')) ? 'present' : 'absent',
+        'status' => $isOff ? 'weekoff' : (($att || str_starts_with($label, '+')) ? 'present' : 'absent'),
+        'ym' => substr($date, 0, 7), 'wo_left' => $woLeft, 'wo_is' => $isOff,
         'in' => !empty($att['first_in']) ? date('H:i', strtotime($att['first_in'])) : '10:30',
         'out' => !empty($att['last_out']) ? date('H:i', strtotime($att['last_out'])) : ($att ? '' : '17:30'),
         'brk' => (int)($att['break_min'] ?? 45),
@@ -109,7 +130,7 @@ function attendance_editor_dialog(string $back): void
     <div class="modal-b">
       <p class="muted" style="margin-bottom:14px" id="attWho"></p>
       <div class="field-row field"><div><label class="f">Date</label><input class="input" type="date" name="work_date" id="attDate" max="<?= today() ?>" required></div>
-        <div><label class="f">Status</label><select class="input" name="status" id="attStatus"><option value="present">Present</option><option value="absent">Absent (remove punches)</option></select></div></div>
+        <div><label class="f">Status</label><select class="input" name="status" id="attStatus"><option value="present">Present</option><option value="absent">Absent (remove punches)</option><option value="weekoff" id="attWoOpt">Week Off</option></select><div class="help" id="attWoHelp" style="display:none"></div></div></div>
       <div id="attTimes">
         <div class="field-row field"><div><label class="f">Check in</label><input class="input" type="time" name="time_in" id="attIn"></div>
           <div><label class="f">Check out</label><input class="input" type="time" name="time_out" id="attOut"></div></div>
@@ -122,7 +143,16 @@ function attendance_editor_dialog(string $back): void
 </dialog>
 <script>
 (function () {
-  var d = document.getElementById('attDlg'), st = document.getElementById('attStatus');
+  var d = document.getElementById('attDlg'), st = document.getElementById('attStatus'), ym = '', woLeft = 0, woIs = false;
+  // Week Off is offered only while that month still has a week off left (the day's own week off counts as available); other months are checked on save
+  function wo() {
+    var opt = document.getElementById('attWoOpt'), hp = document.getElementById('attWoHelp'), dt = document.getElementById('attDate').value;
+    var same = dt.slice(0, 7) === ym, none = same && !woIs && woLeft < 1;
+    opt.disabled = none; hp.style.display = same ? '' : 'none';
+    hp.textContent = none ? 'No week offs left in this month.' : (same ? 'Week offs left this month: ' + woLeft + (woIs ? ' (this day is already one)' : '') : '');
+    if (none && st.value === 'weekoff') st.value = 'absent';
+  }
+  document.getElementById('attDate').addEventListener('change', function () { wo(); sync(); });
   function sync() { document.getElementById('attTimes').style.display = st.value === 'present' ? '' : 'none'; }
   st.addEventListener('change', sync);
   document.addEventListener('click', function (e) {
@@ -131,7 +161,7 @@ function attendance_editor_dialog(string $back): void
     document.getElementById('attUid').value = x.uid; document.getElementById('attWho').textContent = x.name;
     document.getElementById('attDate').value = x.date; st.value = x.status;
     document.getElementById('attIn').value = x.in; document.getElementById('attOut').value = x.out; document.getElementById('attBrk').value = x.brk;
-    document.getElementById('attNote').value = ''; sync(); d.showModal();
+    document.getElementById('attNote').value = ''; ym = x.ym; woLeft = x.wo_left; woIs = x.wo_is; wo(); sync(); d.showModal();
   });
 })();
 </script>

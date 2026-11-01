@@ -8,6 +8,13 @@ declare(strict_types=1);
  */
 
 /** Indian digit grouping: 1800000 -> "18,00,000". */
+/** Seal size (pt) - the same on every page. */
+const SEAL_SIZE = 66;
+
+/** Reporting manager shown when an employee has none assigned (the Director also approves their leave). */
+const DIRECTOR_NAME = 'Prosenjit Roy';
+const DIRECTOR_REPORTING = 'Prosenjit Roy (Director)';
+
 function inr(float $n): string
 {
     $s = (string)(int)round($n);
@@ -36,6 +43,7 @@ function pdf_text_width(string $s, float $size, bool $bold = false): float
 class LetterPage
 {
     public array $cmds = [];
+    public bool $sealed = false;   // true once the Director's block (with its own seal) is on this page
     private function enc(string $s): string { return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], (string)@iconv('UTF-8', 'Windows-1252//TRANSLIT//IGNORE', $s)); }
     public function text(float $x, float $y, string $s, float $size = 10, bool $bold = false, string $rgb = '0 0 0', string $align = 'L'): void
     {
@@ -63,6 +71,9 @@ class LetterPage
     { $this->cmds[] = sprintf('%s rg %.1f %.1f %.1f %.1f re f', $fill, $x, $y, $w, $h); }
     public function image(float $x, float $y, float $w, float $h): void
     { $this->cmds[] = sprintf('q %.1f 0 0 %.1f %.1f %.1f cm /Im1 Do Q', $w, $h, $x, $y); }
+    /** Director's signature (Im2) or the Liberty Foundation seal (Im3), both with transparency. */
+    public function stamp(string $which, float $x, float $y, float $w, float $h): void
+    { $this->cmds[] = sprintf('q %.1f 0 0 %.1f %.1f %.1f cm /%s Do Q', $w, $h, $x, $y, $which === 'seal' ? 'Im3' : 'Im2'); }
 }
 
 /** Assembles pages of LetterPage commands (plus the letterhead logo) into a PDF file string. */
@@ -74,16 +85,25 @@ function pdf_build(array $pages, string $footer = ''): string
     $objs = [1 => '<< /Type /Catalog /Pages 2 0 R >>', 3 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
              4 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
              5 => '<< /Type /XObject /Subtype /Image /Width ' . $logo['w'] . ' /Height ' . $logo['h'] . ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length ' . strlen($img) . " >>\nstream\n" . $img . "\nendstream"];
-    $kids = []; $n = 6; $total = count($pages);
+    $assets = require __DIR__ . '/signature_assets.php'; $o = 6;
+    foreach (['signature', 'seal'] as $k) {
+        $rgb = base64_decode($assets[$k]['data']); $al = base64_decode($assets[$k]['alpha']);
+        $d = ' /Width ' . $assets[$k]['w'] . ' /Height ' . $assets[$k]['h'] . ' /BitsPerComponent 8 /Filter /FlateDecode';
+        $objs[$o] = '<< /Type /XObject /Subtype /Image' . $d . ' /ColorSpace /DeviceGray /Length ' . strlen($al) . " >>\nstream\n" . $al . "\nendstream";
+        $objs[$o + 1] = '<< /Type /XObject /Subtype /Image' . $d . ' /ColorSpace /DeviceRGB /SMask ' . $o . ' 0 R /Length ' . strlen($rgb) . " >>\nstream\n" . $rgb . "\nendstream";
+        $o += 2;
+    }
+    $kids = []; $n = 10; $total = count($pages);
     foreach ($pages as $i => $pg) {
         $cmds = $pg->cmds;
+        if (!$pg->sealed) $cmds[] = sprintf('q %d 0 0 %d %d 42 cm /Im3 Do Q', SEAL_SIZE, SEAL_SIZE, 543 - SEAL_SIZE);   // company seal on every other page, bottom right
         $enc = fn(string $s) => str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], (string)@iconv('UTF-8', 'Windows-1252//TRANSLIT//IGNORE', $s));
         $pn = 'Page ' . ($i + 1) . ' of ' . $total;
         $cmds[] = '0.8 0.8 0.8 RG 0.5 w 52 36 m 543 36 l S';
         $cmds[] = sprintf('BT 0.45 0.45 0.45 rg /F1 7.5 Tf 52 24 Td (%s) Tj ET', $enc($footer));
         $cmds[] = sprintf('BT 0.45 0.45 0.45 rg /F1 7.5 Tf %.1f 24 Td (%s) Tj ET', 543 - pdf_text_width($pn, 7.5), $pn);
         $stream = implode("\n", $cmds);
-        $objs[$n] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' . $W . ' ' . $H . '] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R >> >> /Contents ' . ($n + 1) . ' 0 R >>';
+        $objs[$n] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' . $W . ' ' . $H . '] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R /Im2 7 0 R /Im3 9 0 R >> >> /Contents ' . ($n + 1) . ' 0 R >>';
         $objs[$n + 1] = '<< /Length ' . strlen($stream) . " >>\nstream\n" . $stream . "\nendstream";
         $kids[] = $n . ' 0 R'; $n += 2;
     }
@@ -181,20 +201,22 @@ function execution_block(LetterPage $p, float $y, string $heading, string $decla
     $p->line($mx, $y, $mx + $half, $y, 0.7, '0.3 0.3 0.3'); $p->line($mx + $half + 30, $y, $mx + $cw, $y, 0.7, '0.3 0.3 0.3');
     if ($candidateName !== null) { $p->text($mx, $y - 12, $candidateName, 9.5, true); $p->text($mx, $y - 24, 'Candidate Signature', 9); }
     $p->text($mx + $half + 30, $y - 12, 'Date & Place', 9, true);
-    $y -= 66;
+    $y -= 96;
+    $p->stamp('signature', $mx + 4, $y - 7, 130, 130 * 724 / 2172);
+    $p->stamp('seal', $mx + 158, $y - 14, SEAL_SIZE, SEAL_SIZE); $p->sealed = true;
     $p->line($mx, $y, $mx + $half, $y, 0.7, '0.3 0.3 0.3');
     $p->text($mx, $y - 12, 'Prosenjit Roy', 9.5, true); $p->text($mx, $y - 24, 'Director of Liberty Foundation', 9);
     return $y - 24;
 }
 
 /** Offer letter (2 pages: letter + Annexure A) filled from the employee record. Returns the PDF bytes. */
-function offer_letter_pdf(array $emp, ?string $managerName): string
+function offer_letter_pdf(array $emp, ?string $managerName, ?int $issuedAt = null, string $remarks = ''): string
 {
     $mx = 52; $cw = 595 - 2 * $mx; $red = '0.78 0.16 0.16';
     $ctc = max(0.0, (float)$emp['base_salary']);
     $first = trim(explode(' ', trim((string)$emp['name']))[0]) ?: 'Candidate';
     $join = date('F j, Y', strtotime($emp['joined_on']));
-    $issued = !empty($emp['created_at']) ? strtotime((string)$emp['created_at']) : time();   // the day the admin entered the employee's details
+    $issued = $issuedAt ?? time();   // the letter is dated the day it is generated
     $today = date('F j, Y', $issued);
     $deadline = date('F j, Y', strtotime('+7 days', $issued));
     $dept = $emp['department'] . ($emp['team'] ? " ({$emp['team']})" : '');
@@ -219,7 +241,7 @@ function offer_letter_pdf(array $emp, ?string $managerName): string
     $p1->text($mx, $y - 12, 'Core Job Details', 11.5, true, $red); $y -= 20;
     $rows = [['Designation', $emp['designation']], ['Department', $dept], ['Date of Joining', $join],
              ['Work Location', $emp['work_location'] . ' (' . ($emp['employment_type'] ?: 'Full-time') . ', Office-based)'],
-             ['Reporting Manager', $managerName ?: 'To be communicated by HR'], ['Annual Fixed Pay', $ctc > 0 ? 'INR ' . inr($ctc) . ' (Basic) + performance bonus of 10-20%' : 'As communicated by HR (see Annexure A)']];
+             ['Reporting Manager', $managerName ?: DIRECTOR_REPORTING], ['Annual Fixed Pay', $ctc > 0 ? 'INR ' . inr($ctc) . ' (Basic) + performance bonus of 10-20%' : 'As communicated by HR (see Annexure A)']];
     $rh = 21; $ty = $y;
     foreach ($rows as $i => [$k, $v]) {
         if ($i % 2 === 0) $p1->rect($mx, $ty - $rh, $cw, $rh, '0.965 0.965 0.97');
@@ -238,6 +260,7 @@ function offer_letter_pdf(array $emp, ?string $managerName): string
     $y = $p1->para($mx, $y, $cw, "Please sign the Candidate Acceptance Declaration on Annexure A and return a copy of this letter to HR on or before $deadline. If we do not receive your acceptance by this date, this offer will stand withdrawn.", 10.5, false, 15);
     $y -= 12;
     $y = $p1->para($mx, $y, $cw, 'We look forward to welcoming you on board and to a rewarding journey together.', 10.5, false, 15);
+    if (trim($remarks) !== '') { $y -= 12; $p1->text($mx, $y - 12, 'Additional Remarks', 11.5, true, $red); $y -= 14; $y = $p1->para($mx, $y, $cw, trim($remarks), 10.5, false, 15); }
 
     // ---------------- PAGE 2: Annexure A ----------------
     $p2 = new LetterPage();
@@ -289,12 +312,13 @@ function simple_pdf(array $blocks, string $footer = ''): string
 }
 
 /** (Re)creates the employee's offer letter and lists it under their Documents. Returns the documents row id. */
-function create_offer_letter(int $userId): int
+function create_offer_letter(int $userId, ?string $joinDate = null, string $remarks = '', ?int $issuedAt = null): int
 {
     $emp = q_one('SELECT * FROM users WHERE id=? AND role <> "admin"', [$userId]);
     if (!$emp) throw new RuntimeException('Employee not found.');
+    if ($joinDate) $emp['joined_on'] = $joinDate;   // the date typed on the admin form, used in this letter only
     $mgr = $emp['manager_id'] ? q_val('SELECT name FROM users WHERE id=?', [$emp['manager_id']]) : null;
-    $pdf = offer_letter_pdf($emp, $mgr);
+    $pdf = offer_letter_pdf($emp, $mgr, $issuedAt, $remarks);
 
     $dir = cfg('upload_dir') . "/docs/$userId";
     if (!is_dir($dir) && !mkdir($dir, 0775, true)) throw new RuntimeException('Could not create the documents folder.');

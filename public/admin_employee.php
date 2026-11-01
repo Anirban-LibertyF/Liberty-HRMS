@@ -32,8 +32,10 @@ page_title($isNew ? 'Add employee' : $emp['name'], $isNew ? 'The employee ID (LO
 ?>
 <form method="post" action="actions.php" class="card" autocomplete="off">
   <?= csrf_field() ?><input type="hidden" name="do" value="<?= $isNew ? 'admin_user_create' : 'admin_user_update' ?>"><?php if ($emp): ?><input type="hidden" name="id" value="<?= $emp['id'] ?>"><?php endif; ?>
-  <div class="card-head"><h2><?= icon('user', 20) ?> <?= $isNew ? 'Employee details' : 'Edit details' ?></h2>
-    <?php if ($emp): ?><span class="badge <?= $emp['status'] === 'active' ? 'b-green' : 'b-slate' ?>"><?= e(ucfirst($emp['status'])) ?></span><?php endif; ?></div>
+  <?php $open = $isNew || !empty($_SESSION['form_old']); ?>
+  <div class="card-head"<?php if ($emp): ?> id="empToggle" role="button" tabindex="0" aria-expanded="<?= $open ? 'true' : 'false' ?>" aria-controls="empBody" style="cursor:pointer;user-select:none"<?php endif; ?>><h2><?= icon('user', 20) ?> <?= $isNew ? 'Employee details' : 'Edit details' ?></h2>
+    <?php if ($emp): ?><span style="display:flex;align-items:center;gap:10px"><span class="badge <?= $emp['status'] === 'active' ? 'b-green' : 'b-slate' ?>"><?= e(ucfirst($emp['status'])) ?></span><svg id="empChev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;<?= $open ? 'transform:rotate(180deg)' : '' ?>"><polyline points="6 9 12 15 18 9"/></svg></span><?php endif; ?></div>
+  <div id="empBody"<?= ($emp && !$open) ? ' hidden' : '' ?>>
 
   <div class="eyebrow" style="margin-bottom:10px">Personal</div>
   <div class="grid g-3">
@@ -46,15 +48,25 @@ page_title($isNew ? 'Add employee' : $emp['name'], $isNew ? 'The employee ID (LO
     <div class="field"><label class="f">Emergency contact name</label><input class="input" name="emergency_name" maxlength="120" value="<?= $v('emergency_name') ?>"></div>
     <div class="field"><label class="f">Emergency contact phone</label><input class="input" name="emergency_phone" maxlength="30" value="<?= $v('emergency_phone') ?>"></div>
   </div>
+  <div class="eyebrow" style="margin:18px 0 10px">Bank details (used on the payslip)</div>
+  <div class="grid g-3">
+    <div class="field"><label class="f">Bank name</label><input class="input" name="bank_name" maxlength="100" value="<?= $v('bank_name') ?>"></div>
+    <div class="field"><label class="f">Bank A/c No</label><input class="input mono" name="bank_account_no" inputmode="numeric" maxlength="30" value="<?= $v('bank_account_no') ?>"></div>
+    <div class="field"><label class="f">IFSC code</label><input class="input mono" name="bank_ifsc" maxlength="15" style="text-transform:uppercase" value="<?= $v('bank_ifsc') ?>"></div>
+    <div class="field"><label class="f">Branch name</label><input class="input" name="bank_branch" maxlength="100" value="<?= $v('bank_branch') ?>"></div>
+  </div>
 
   <div class="eyebrow" style="margin:6px 0 10px">Employment</div>
   <div class="grid g-3">
     <div class="field"><label class="f">Employee ID</label><input class="input mono" value="<?= $emp ? e($emp['emp_code']) : 'Auto-generated (LOE-###)' ?>" disabled></div>
     <div class="field"><label class="f">Department <span class="req">*</span></label><input class="input" name="department" required maxlength="80" value="<?= $v('department') ?>"></div>
     <div class="field"><label class="f">Team</label><input class="input" name="team" maxlength="80" value="<?= $v('team') ?>"></div>
-    <div class="field"><label class="f">Designation <span class="req">*</span></label><input class="input" name="designation" required maxlength="120" value="<?= $v('designation') ?>"></div>
-    <div class="field"><label class="f">Role</label><select class="input" name="role"><option value="employee" <?= $sel('role', 'employee') ?>>Employee</option><option value="manager" <?= $sel('role', 'manager') ?>>Manager (can approve their team)</option></select></div>
-    <div class="field"><label class="f">Reporting manager</label><select class="input" name="manager_id"><option value="">— none (admin approves) —</option><?php foreach ($managers as $m): ?><option value="<?= $m['id'] ?>" <?= $sel('manager_id', (string)$m['id']) ?>><?= e($m['emp_code'] . ' · ' . $m['name']) ?></option><?php endforeach; ?></select></div>
+    <div class="field"><label class="f">Designation <span class="req">*</span></label><input class="input" name="designation" list="desigList" required maxlength="120" value="<?= $v('designation') ?>"><datalist id="desigList"><?php foreach (designation_suggestions() as $d): ?><option value="<?= e($d) ?>"><?php endforeach; ?></datalist></div>
+    <div class="field" style="grid-column:1/-1"><label class="f">Job roles (tick one or more - decides the responsibilities in the Appointment Letter)</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px 22px;padding-top:4px"><?php $picked = job_roles_of($emp ?? $_SESSION['form_old'] ?? []); foreach (job_role_catalog() as $k => $lbl): ?><label style="display:flex;gap:7px;align-items:center;font-size:13.5px"><input type="checkbox" name="job_roles[]" value="<?= e($k) ?>" <?= in_array($k, $picked, true) ? 'checked' : '' ?>> <?= e($lbl) ?></label><?php endforeach; ?></div></div>
+    <div class="field" style="grid-column:1/-1"><label class="f">Job responsibilities (optional - your own points override the roles above)</label><textarea class="input" name="job_duties" rows="4" maxlength="2000" placeholder="One point per line. Leave blank to use the default list for this designation (sales, telecalling, HR, accounts, developer, teacher, etc.)."><?= $v('job_duties') ?></textarea></div>
+    <div class="field"><label class="f">Access level</label><select class="input" name="role"><option value="employee" <?= $sel('role', 'employee') ?>>Employee</option><option value="manager" <?= $sel('role', 'manager') ?>>Manager (can approve their team)</option></select></div>
+    <div class="field"><label class="f">Reporting manager</label><select class="input" name="manager_id"><option value="" <?= empty($emp["manager_id"] ?? $_SESSION["form_old"]["manager_id"] ?? null) ? "selected" : "" ?>>Director (Prosenjit Roy)</option><?php foreach ($managers as $m): ?><option value="<?= $m['id'] ?>" <?= $sel('manager_id', (string)$m['id']) ?>><?= e($m['emp_code'] . ' · ' . $m['name']) ?></option><?php endforeach; ?></select></div>
     <div class="field"><label class="f">Employment type</label><select class="input" name="employment_type"><?php foreach (['Full-time', 'Part-time', 'Contract', 'Intern'] as $o): ?><option <?= $sel('employment_type', $o) ?>><?= $o ?></option><?php endforeach; ?></select></div>
     <div class="field"><label class="f">Work location</label><input class="input" name="work_location" maxlength="80" value="<?= $v('work_location', 'Headquarters') ?>"></div>
     <div class="field"><label class="f">Shift</label><select class="input" name="shift_id"><?php foreach ($shifts as $s): ?><option value="<?= $s['id'] ?>" <?= $sel('shift_id', (string)$s['id']) ?>><?= e($s['name']) ?> (<?= e(substr($s['start_time'], 0, 5)) ?>–<?= e(substr($s['end_time'], 0, 5)) ?>)</option><?php endforeach; ?></select></div>
@@ -71,6 +83,7 @@ page_title($isNew ? 'Add employee' : $emp['name'], $isNew ? 'The employee ID (LO
       <div style="display:flex;gap:8px"><input class="input" type="text" id="pw" name="password" minlength="8" maxlength="72" <?= $isNew ? 'required' : '' ?> autocomplete="new-password" placeholder="Min 8 chars, letters + numbers"><button type="button" class="btn btn-sm" id="genPw">Generate</button></div></div>
   </div>
   <div class="btn-row"><button class="btn btn-brand"><?= $isNew ? 'Create employee' : 'Save changes' ?></button><a class="btn" href="admin.php?tab=employees">Cancel</a></div>
+</div>
 </form>
 <script>
 document.getElementById('genPw').addEventListener('click', function () {
@@ -81,15 +94,65 @@ document.getElementById('genPw').addEventListener('click', function () {
 </script>
 
 <?php if ($emp): ?>
+<script>
+(function () {
+  var t = document.getElementById('empToggle'), b = document.getElementById('empBody'), c = document.getElementById('empChev');
+  if (!t) return;
+  function flip() { b.hidden = !b.hidden; t.setAttribute('aria-expanded', b.hidden ? 'false' : 'true'); c.style.transform = b.hidden ? '' : 'rotate(180deg)'; }
+  t.addEventListener('click', flip);
+  t.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
+})();
+</script>
 <div class="head-actions mt no-print">
   <form method="post" action="actions.php" class="inline"><?= csrf_field() ?><input type="hidden" name="do" value="admin_user_toggle"><input type="hidden" name="id" value="<?= $emp['id'] ?>"><input type="hidden" name="back" value="admin_employee.php?id=<?= $emp['id'] ?>">
     <button class="btn <?= $emp['status'] === 'active' ? 'btn-danger' : 'btn-brand' ?>"><?= $emp['status'] === 'active' ? 'Deactivate account' : 'Reactivate account' ?></button></form>
-  <form method="post" action="actions.php" class="inline"><?= csrf_field() ?><input type="hidden" name="do" value="admin_offerletter_regen"><input type="hidden" name="id" value="<?= $emp['id'] ?>"><input type="hidden" name="back" value="admin_employee.php?id=<?= $emp['id'] ?>"><button class="btn">Regenerate offer letter</button></form>
-  <form method="post" action="actions.php" class="inline"><?= csrf_field() ?><input type="hidden" name="do" value="admin_joiningletter_regen"><input type="hidden" name="id" value="<?= $emp['id'] ?>"><input type="hidden" name="back" value="admin_employee.php?id=<?= $emp['id'] ?>"><button class="btn">Regenerate appointment letter</button></form>
+  <?php foreach ([['admin_offerletter_regen', 'Offer letter'], ['admin_joiningletter_regen', 'Appointment letter'], ['admin_experience_letter', 'Experience letter'], ['admin_recommendation_letter', 'Recommendation letter']] as [$lpAct, $lpName]): ?><button type="button" class="btn" data-lp="lp-<?= $lpAct ?>"><?= $lpName ?></button><?php endforeach; ?>
   <?php $joinUp = q_one('SELECT id, uploaded_at FROM documents WHERE user_id=? AND category="Joining Letter" ORDER BY id DESC LIMIT 1', [$emp['id']]); ?>
   <span class="muted">Joining letter: <?= $joinUp ? '<a href="download.php?t=doc&id=' . $joinUp['id'] . '" target="_blank" rel="noopener">uploaded ' . e(fmt_date($joinUp['uploaded_at'])) . '</a>' : 'not uploaded yet' ?></span>
   <?php if ($emp['failed_attempts'] >= 5): ?><form method="post" action="actions.php" class="inline"><?= csrf_field() ?><input type="hidden" name="do" value="admin_user_unlock"><input type="hidden" name="id" value="<?= $emp['id'] ?>"><input type="hidden" name="back" value="admin_employee.php?id=<?= $emp['id'] ?>"><button class="btn">Unlock sign-in</button></form><?php endif; ?>
-  <span class="muted">Last sign-in: <?= e(fmt_date($emp['last_login'], 'M d, Y h:i A')) ?> · Manager: <?= e($mgr ?? '—') ?></span></div>
+  <span class="muted">Last sign-in: <?= e(fmt_date($emp['last_login'], 'M d, Y h:i A')) ?> · Manager: <?= e($mgr ?? 'Prosenjit Roy (Director)') ?></span></div>
+
+<?php
+$exDoc = q_one('SELECT id, uploaded_at FROM documents WHERE user_id=? AND category="Experience Letter" ORDER BY id DESC LIMIT 1', [$emp['id']]);
+$rcDoc = q_one('SELECT id, uploaded_at FROM documents WHERE user_id=? AND category="Recommendation Letter" ORDER BY id DESC LIMIT 1', [$emp['id']]);
+$lnk = fn($d) => $d ? '<a href="download.php?t=doc&id=' . $d['id'] . '" target="_blank" rel="noopener">generated ' . e(fmt_date($d['uploaded_at'])) . '</a>' : 'not generated yet';
+?>
+<?php
+$olDoc = q_one('SELECT id, uploaded_at FROM documents WHERE user_id=? AND category="Offer Letter" ORDER BY id DESC LIMIT 1', [$emp['id']]);
+$alDoc = q_one('SELECT id, uploaded_at FROM documents WHERE user_id=? AND category="Appointment Letter" ORDER BY id DESC LIMIT 1', [$emp['id']]);
+?>
+<div class="mt no-print" id="letterPanels" style="max-width:760px">
+  <?php foreach ([['admin_offerletter_regen', 'Offer letter', $olDoc, 'e.g. Please bring your original certificates on the first day.'], ['admin_joiningletter_regen', 'Appointment letter', $alDoc, 'e.g. You will report to the Kolkata office for the first week.']] as [$act, $ttl, $doc, $ph]): ?>
+  <form method="post" action="actions.php" class="card" id="lp-<?= $act ?>" hidden><?= csrf_field() ?><input type="hidden" name="do" value="<?= $act ?>"><input type="hidden" name="id" value="<?= $emp['id'] ?>"><input type="hidden" name="back" value="admin_employee.php?id=<?= $emp['id'] ?>">
+    <div class="card-head"><h2><?= icon('user', 20) ?> <?= $ttl ?></h2><span class="muted"><?= $lnk($doc) ?></span></div>
+    <div class="field"><label class="f">Joining date <span class="req">*</span></label><input class="input" type="date" name="join_date" required value="<?= e($emp['joined_on']) ?>"></div>
+    <?php if ($act === 'admin_joiningletter_regen'): ?><div class="field"><label class="f">Responsibilities (one per line - edit freely, appear in clause 5)</label><textarea class="input" name="duties" rows="6" maxlength="3000"><?= e(implode("
+", array_map('duty_clean', job_duties_for($emp)))) ?></textarea></div><?php endif; ?>
+    <div class="field"><label class="f">Extra remarks (optional, added to the letter)</label><textarea class="input" name="note" rows="2" maxlength="250" placeholder="<?= e($ph) ?>"></textarea></div>
+    <button class="btn btn-brand">Generate <?= strtolower($ttl) ?></button>
+    <p class="muted" style="margin-top:8px;font-size:12px">The letter is dated today (<?= e(date('F j, Y')) ?>). The joining date here is used in this letter only.</p></form>
+  <?php endforeach; ?>
+  <form method="post" action="actions.php" class="card" id="lp-admin_experience_letter" hidden><?= csrf_field() ?><input type="hidden" name="do" value="admin_experience_letter"><input type="hidden" name="id" value="<?= $emp['id'] ?>"><input type="hidden" name="back" value="admin_employee.php?id=<?= $emp['id'] ?>">
+    <div class="card-head"><h2><?= icon('user', 20) ?> Experience letter</h2><span class="muted"><?= $lnk($exDoc) ?></span></div>
+    <div class="field"><label class="f">Last working day <span class="req">*</span></label><input class="input" type="date" name="end_date" required min="<?= e($emp['joined_on']) ?>" value="<?= date('Y-m-d') ?>"></div>
+    <div class="field"><label class="f">Responsibilities (one per line - edit freely, max 6)</label><textarea class="input" name="duties" rows="5" maxlength="1200"><?= e(implode("\n", letter_duty_points($emp, 4))) ?></textarea></div><div class="field"><label class="f">Extra remarks (optional, added to the letter)</label><textarea class="input" name="note" rows="2" maxlength="400" placeholder="e.g. Their contribution to the project was valuable."></textarea></div>
+    <button class="btn btn-brand">Generate experience letter</button></form>
+  <form method="post" action="actions.php" class="card" id="lp-admin_recommendation_letter" hidden><?= csrf_field() ?><input type="hidden" name="do" value="admin_recommendation_letter"><input type="hidden" name="id" value="<?= $emp['id'] ?>"><input type="hidden" name="back" value="admin_employee.php?id=<?= $emp['id'] ?>">
+    <div class="card-head"><h2><?= icon('user', 20) ?> Recommendation letter</h2><span class="muted"><?= $lnk($rcDoc) ?></span></div>
+    <div class="field"><label class="f">Last day worked (leave blank if still working)</label><input class="input" type="date" name="end_date" min="<?= e($emp['joined_on']) ?>"></div>
+    <div class="field"><label class="f">Responsibilities (one per line - edit freely, max 6)</label><textarea class="input" name="duties" rows="5" maxlength="1200"><?= e(implode("\n", letter_duty_points($emp, 3))) ?></textarea></div><div class="field"><label class="f">Strengths / remarks (optional, added to the letter)</label><textarea class="input" name="note" rows="2" maxlength="400" placeholder="e.g. Took ownership of the UI redesign and mentored new joiners."></textarea></div>
+    <button class="btn btn-brand">Generate recommendation letter</button></form>
+</div>
+<script>
+document.querySelectorAll('[data-lp]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var open = document.getElementById(b.dataset.lp), show = open.hidden;
+    document.querySelectorAll('#letterPanels > form').forEach(function (f) { f.hidden = true; });
+    document.querySelectorAll('[data-lp]').forEach(function (x) { x.classList.remove('btn-brand'); });
+    if (show) { open.hidden = false; b.classList.add('btn-brand'); open.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  });
+});
+</script>
 
 <div class="grid g-4 mt">
   <div class="card stat"><div class="eyebrow">Present (<?= e(date('M Y', strtotime("$ym-01"))) ?>)</div><div class="big"><?= $sum['present'] ?> <small>days</small></div></div>

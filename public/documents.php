@@ -7,7 +7,8 @@ $uid = (int)$user['id'];
 $company = q_all('SELECT * FROM documents WHERE user_id IS NULL ORDER BY uploaded_at DESC');
 $offerLetters = q_all('SELECT * FROM documents WHERE user_id=? AND category="Offer Letter" ORDER BY uploaded_at DESC', [$uid]);
 $appointmentLetters = q_all('SELECT * FROM documents WHERE user_id=? AND category="Appointment Letter" ORDER BY uploaded_at DESC', [$uid]);
-$mine = q_all('SELECT * FROM documents WHERE user_id=? AND category NOT IN ("Offer Letter","Appointment Letter","Joining Letter","NDA Letter","NDA Signed") ORDER BY uploaded_at DESC', [$uid]);
+$moreLetters = q_all('SELECT * FROM documents WHERE user_id=? AND category IN ("Experience Letter","Recommendation Letter") ORDER BY category, uploaded_at DESC', [$uid]);
+$mine = q_all('SELECT * FROM documents WHERE user_id=? AND category NOT IN ("Offer Letter","Appointment Letter","Joining Letter","NDA Letter","NDA Signed","Experience Letter","Recommendation Letter") ORDER BY uploaded_at DESC', [$uid]);
 $joiningUp = q_one('SELECT * FROM documents WHERE user_id=? AND category="Joining Letter" ORDER BY id DESC LIMIT 1', [$uid]);
 $joinDaysLeft = joining_letter_days_left($user['joined_on']);
 $joinReady = $joinDaysLeft === 0;
@@ -53,8 +54,21 @@ page_title('Documents', 'Company policies and your personal records in one place
       <?php if (!$appointmentLetters): ?><p class="empty">No appointment letter is available yet.</p><?php endif; ?>
     </section>
 
+    <?php if ($moreLetters): ?>
+    <section class="card">
+      <div class="card-head"><h2><?= icon('user', 20) ?> Experience &amp; Recommendation Letters</h2></div>
+      <?php foreach ($moreLetters as $d): ?>
+        <div class="feed-item" style="border-bottom:1px solid var(--line-2);align-items:center"><span class="feed-ic blue"><?= icon('folder', 16) ?></span>
+          <div style="flex:1"><div class="tt"><a href="download.php?t=doc&id=<?= $d['id'] ?>"><?= e($d['title']) ?></a></div><p><?= e($d['file_name']) ?> · <?= e(fmt_date($d['uploaded_at'])) ?></p></div>
+          <a class="btn btn-sm btn-brand" href="download.php?t=doc&id=<?= $d['id'] ?>&dl=1"><?= icon('download', 15) ?> Download</a></div>
+      <?php endforeach; ?>
+    </section>
+    <?php endif; ?>
+
     <section class="card">
       <div class="card-head"><h2><?= icon('shield', 20) ?> Joining Letter</h2><span class="badge <?= $joiningUp ? 'b-green' : 'b-amber' ?>"><?= $joiningUp ? 'Uploaded' : 'Not uploaded' ?></span></div>
+      <div class="alert" style="margin-bottom:12px"><?= icon('help', 18) ?><span><b>How to submit:</b> download the joining letter format, print it, sign it, then upload the signed copy below.</span></div>
+      <div class="btn-row" style="margin-bottom:14px"><a class="btn btn-brand" href="joining_form.php?dl=1"><?= icon('download', 16) ?> Download joining letter format</a><a class="btn" href="joining_form.php" target="_blank" rel="noopener"><?= icon('eye', 16) ?> Preview</a></div>
       <?php if ($joiningUp): ?>
         <div class="feed-item" style="border-bottom:1px solid var(--line-2);align-items:center"><span class="feed-ic blue"><?= icon('folder', 16) ?></span>
           <div style="flex:1"><div class="tt"><a href="download.php?t=doc&id=<?= $joiningUp['id'] ?>" target="_blank" rel="noopener"><?= e($joiningUp['title']) ?></a></div><p><?= e($joiningUp['file_name']) ?> · <?= e(fmt_date($joiningUp['uploaded_at'])) ?></p></div>

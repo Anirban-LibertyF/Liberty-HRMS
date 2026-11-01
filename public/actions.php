@@ -152,6 +152,9 @@ try {
             $phone = preg_replace('/[^\d+\-\s()]/', '', (string)($_POST['phone'] ?? ''));
             $ph2 = fn(string $k) => mb_substr(preg_replace('/[^\d+\-\s()]/', '', (string)($_POST[$k] ?? '')), 0, 30);
             q('UPDATE users SET phone=?, address=?, emergency_name=?, emergency_phone=? WHERE id=?', [mb_substr($phone, 0, 30), mb_substr(trim((string)($_POST['address'] ?? '')), 0, 300), mb_substr(trim((string)($_POST['emergency_name'] ?? '')), 0, 120), $ph2('emergency_phone'), $uid]);
+            [$bank, $bankErr] = bank_fields_from_post($_POST);
+            if ($bankErr) done(false, $bankErr, 'profile.php');
+            q('UPDATE users SET bank_name=?, bank_account_no=?, bank_ifsc=?, bank_branch=? WHERE id=?', [...array_values($bank), $uid]);
             done(true, 'Profile updated.', 'profile.php');
         case 'profile_photo_upload':
             $photo = store_profile_photo($_FILES['photo'] ?? ['error' => UPLOAD_ERR_NO_FILE], $uid);

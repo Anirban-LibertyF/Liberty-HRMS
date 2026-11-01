@@ -12,8 +12,8 @@ After every `git pull`, run the migration (safe to repeat, keeps all data):
 
     php -c php.ini database/migrate.php
 
-It adds new tables, fixes leave types (Paid Leave 18 days), renames document categories and **generates every employee's Offer Letter and
-Appointment Letter PDFs** (those are files in `storage/uploads`, which git does not carry, so they have to be generated on each machine).
+It adds new tables and columns (e.g. the per-employee job responsibilities), fixes leave types (Paid Leave 18 days), renames document categories and **creates any missing Offer Letter and
+Appointment Letter PDFs** for every employee (those are files in `storage/uploads`, which git does not carry, so they have to be created on each machine; existing letters are kept - use Generate on the employee page to redo one).
 `setup.php` also generates them, but it wipes the database first.
 
 ## Logins

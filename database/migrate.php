@@ -7,8 +7,8 @@ declare(strict_types=1);
  *   1. creates tables added after the first release (payout_paid),
  *   2. fixes leave types (only Paid Leave, 18 days; no Sick Leave) and whole-day leave,
  *   3. renames document categories (generated "Joining Letter" -> "Appointment Letter", "NDA Signed" -> "Joining Letter"),
- *   4. (re)generates every active employee's Offer Letter and Appointment Letter PDFs into storage/uploads
- *      (the PDFs are files, not DB rows, so they do not travel with git - this is how they get created on a fresh checkout).
+ *   4. creates any MISSING Offer Letter / Appointment Letter PDFs into storage/uploads (existing ones are kept with their date and remarks;
+ *      the PDFs are files, not DB rows, so they do not travel with git - this is how they get created on a fresh checkout).
  */
 if (PHP_SAPI !== 'cli') exit('CLI only.');
 require __DIR__ . '/../app/init.php';
@@ -24,6 +24,13 @@ db()->exec('CREATE TABLE IF NOT EXISTS payout_paid (
   UNIQUE KEY uq_payout (user_id, pay_month),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+if (!q_val('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME="users" AND COLUMN_NAME="job_duties"'))
+    db()->exec('ALTER TABLE users ADD COLUMN job_duties TEXT NULL AFTER designation');
+if (!q_val('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME="users" AND COLUMN_NAME="job_roles"'))
+    db()->exec('ALTER TABLE users ADD COLUMN job_roles VARCHAR(200) NULL AFTER job_duties');
+foreach (['bank_name' => 'VARCHAR(100)', 'bank_account_no' => 'VARCHAR(30)', 'bank_ifsc' => 'VARCHAR(15)', 'bank_branch' => 'VARCHAR(100)'] as $col => $type)
+    if (!q_val('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME="users" AND COLUMN_NAME=?', [$col]))
+        db()->exec("ALTER TABLE users ADD COLUMN $col $type NOT NULL DEFAULT ''");
 echo "Tables OK.\n";
 
 // 2. leave types: Paid Leave (18 days) + Unpaid / LOP only
@@ -50,9 +57,10 @@ echo "Document categories OK.\n";
 $n = 0;
 foreach (q_all('SELECT id, emp_code FROM users WHERE role <> "admin" AND status="active" ORDER BY id') as $u) {
     try {
-        create_offer_letter((int)$u['id']);
-        create_appointment_letter((int)$u['id']);
+        // only missing letters: an existing one keeps its date and the remarks the admin typed (use Generate on the employee page to redo it)
+        if (!q_val('SELECT COUNT(*) FROM documents WHERE user_id=? AND category="Offer Letter"', [$u['id']])) create_offer_letter((int)$u['id']);
+        if (!q_val('SELECT COUNT(*) FROM documents WHERE user_id=? AND category="Appointment Letter"', [$u['id']])) create_appointment_letter((int)$u['id']);
         $n++;
     } catch (Throwable $ex) { echo "  {$u['emp_code']}: " . $ex->getMessage() . "\n"; }
 }
-echo "Offer + Appointment letters generated for $n employee(s).\nDone.\n";
+echo "Offer + Appointment letters checked for $n employee(s) (missing ones created).\nDone.\n";

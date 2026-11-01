@@ -28,7 +28,7 @@ page_title('My Profile', 'Your employment details and account security.');
       <div class="kv"><span>Employee ID</span><b class="mono"><?= e($user['emp_code']) ?></b></div>
       <div class="kv"><span>Corporate Email</span><span><?= e($user['email']) ?></span></div>
       <div class="kv"><span>Department / Team</span><span><?= e($user['department']) ?> · <?= e($user['team']) ?></span></div>
-      <div class="kv"><span>Reporting Manager</span><span><?= $mgr ? e($mgr['name']) . ' (' . e($mgr['designation']) . ')' : '—' ?></span></div>
+      <div class="kv"><span>Reporting Manager</span><span><?= $mgr ? e($mgr['name']) . ' (' . e($mgr['designation']) . ')' : 'Prosenjit Roy (Director)' ?></span></div>
       <div class="kv"><span>Shift</span><span><?= e($user['shift_name']) ?> (<?= e(substr($user['start_time'], 0, 5)) ?> – <?= e(substr($user['end_time'], 0, 5)) ?>)</span></div>
       <div class="kv"><span>Date of Joining</span><span><?= e(fmt_date($user['joined_on'])) ?></span></div>
       <div class="kv"><span>Date of Birth</span><span><?= e($user['dob'] ? fmt_date($user['dob']) : '—') ?></span></div>
@@ -40,6 +40,9 @@ page_title('My Profile', 'Your employment details and account security.');
       <div class="field"><label class="f" for="ph">Phone</label><input class="input" id="ph" name="phone" value="<?= e($user['phone']) ?>" maxlength="30"></div>
       <div class="field"><label class="f" for="ad">Address</label><input class="input" id="ad" name="address" value="<?= e($user['address']) ?>" maxlength="300"></div>
       <div class="field-row field"><div><label class="f" for="en">Emergency contact</label><input class="input" id="en" name="emergency_name" value="<?= e($user['emergency_name']) ?>" maxlength="120"></div><div><label class="f" for="ep">Emergency phone</label><input class="input" id="ep" name="emergency_phone" value="<?= e($user['emergency_phone']) ?>" maxlength="30"></div></div>
+      <div class="eyebrow" style="margin:18px 0 10px">Bank details (used on your payslip)</div>
+      <div class="field-row field"><div><label class="f" for="bn">Bank name</label><input class="input" id="bn" name="bank_name" value="<?= e($user['bank_name']) ?>" maxlength="100"></div><div><label class="f" for="ba">Bank A/c No</label><input class="input mono" id="ba" name="bank_account_no" inputmode="numeric" value="<?= e($user['bank_account_no']) ?>" maxlength="30"></div></div>
+      <div class="field-row field"><div><label class="f" for="bi">IFSC code</label><input class="input mono" id="bi" name="bank_ifsc" value="<?= e($user['bank_ifsc']) ?>" maxlength="15" style="text-transform:uppercase"></div><div><label class="f" for="bb">Branch name</label><input class="input" id="bb" name="bank_branch" value="<?= e($user['bank_branch']) ?>" maxlength="100"></div></div>
       <button class="btn btn-brand">Save Profile</button></form>
   </section>
 

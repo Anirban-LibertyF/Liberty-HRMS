@@ -118,6 +118,20 @@ switch ($do) {
 // Everything below is administrator-only.
 if (!$isAdmin) done(false, 'Administrator role required.', 'admin.php');
 
+/** Joining date + remarks typed on the offer / appointment letter forms: [date|null, remarks]. Stops with an error if the date is invalid. */
+function letter_form_inputs(int $id, string $back): array
+{
+    $d = trim((string)($_POST['join_date'] ?? ''));
+    if ($d !== '' && (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) || !checkdate((int)substr($d, 5, 2), (int)substr($d, 8, 2), (int)substr($d, 0, 4)))) done(false, 'Enter a valid joining date.', $back);
+    return [$d !== '' ? $d : null, mb_substr(trim((string)($_POST['note'] ?? '')), 0, 250)];
+}
+
+/** Responsibilities typed one per line on a letter form (max $max lines, trailing punctuation removed). */
+function letter_duties_from_post(int $max = 6): array
+{
+    return array_slice(array_values(array_filter(array_map(fn($l) => mb_substr(duty_clean(trim($l)), 0, 220), preg_split('/\R/', (string)($_POST['duties'] ?? ''))), fn($l) => $l !== '')), 0, $max);
+}
+
 switch ($do) {
     case 'admin_user_create':
     case 'admin_user_update':
@@ -155,14 +169,36 @@ switch ($do) {
 
     case 'admin_offerletter_regen':
         if (!q_val('SELECT COUNT(*) FROM users WHERE id=? AND role <> "admin"', [$id])) done(false, 'Employee not found.', $back);
-        create_offer_letter($id);
+        [$jd, $rm] = letter_form_inputs($id, $back);
+        create_offer_letter($id, $jd, $rm);
         notify($id, 'Your offer letter is available under Documents.', 'documents.php');
         done(true, "Offer letter regenerated and added to the employee's Documents.", $back);
 
     case 'admin_joiningletter_regen':
         if (!q_val('SELECT COUNT(*) FROM users WHERE id=? AND role <> "admin"', [$id])) done(false, 'Employee not found.', $back);
-        create_appointment_letter($id);
+        [$jd, $rm] = letter_form_inputs($id, $back);
+        create_appointment_letter($id, $jd, $rm, null, letter_duties_from_post(14));
         done(true, "Appointment letter regenerated and added to the employee's Documents.", $back);
+
+    case 'admin_experience_letter':
+    case 'admin_recommendation_letter':
+        if (!q_val('SELECT COUNT(*) FROM users WHERE id=? AND role <> "admin"', [$id])) done(false, 'Employee not found.', $back);
+        $dateOk = fn($d) => (bool)preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && checkdate((int)substr($d, 5, 2), (int)substr($d, 8, 2), (int)substr($d, 0, 4));
+        $joined = (string)q_val('SELECT joined_on FROM users WHERE id=?', [$id]);
+        $txt = mb_substr(trim((string)($_POST['note'] ?? '')), 0, 400);
+        $duties = letter_duties_from_post(6);
+        $d = trim((string)($_POST['end_date'] ?? ''));
+        if ($do === 'admin_experience_letter') {
+            if (!$dateOk($d)) done(false, 'Enter the last working day.', $back);
+            if ($d < $joined) done(false, 'The last working day cannot be before the date of joining.', $back);
+            create_experience_letter($id, $d, $txt, (int)$user["id"], $duties);
+            notify($id, 'Your experience letter is available under Documents.', 'documents.php');
+            done(true, "Experience letter generated and added to the employee's Documents.", $back);
+        }
+        if ($d !== '' && (!$dateOk($d) || $d < $joined)) done(false, 'Enter a valid last day worked (not before the date of joining), or leave it blank if the employee is still working.', $back);
+        create_recommendation_letter($id, $d, $txt, (int)$user["id"], $duties);
+        notify($id, 'Your letter of recommendation is available under Documents.', 'documents.php');
+        done(true, "Recommendation letter generated and added to the employee's Documents.", $back);
 
     case 'admin_attendance_save':
         $emp = q_one('SELECT u.*, s.name AS shift_name, s.start_time, s.end_time, s.required_min, s.break_allow_min, s.grace_min FROM users u JOIN shifts s ON s.id=u.shift_id WHERE u.id=? AND u.role <> "admin"', [(int)($_POST['user_id'] ?? 0)]);
@@ -174,7 +210,14 @@ switch ($do) {
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || $date > today()) done(false, 'Choose a valid date that is not in the future.', $back);
         if ($date < $emp['joined_on']) done(false, 'That date is before the employee joined (' . fmt_date($emp['joined_on']) . ').', $back);
         if ($reason === '') done(false, 'Please give a reason for the edit.', $back);
-        if (!in_array($status, ['present', 'absent'], true)) done(false, 'Choose a status.', $back);
+        if (!in_array($status, ['present', 'absent', 'weekoff'], true)) done(false, 'Choose a status.', $back);
+        if ($status === 'weekoff') {   // allowed only while that month still has a week off to give (the day's own week off does not count against it)
+            if (is_weekend($date)) done(false, 'That day is already a weekend.', $back);
+            if (holidays_between($date, $date)) done(false, 'That day is a company holiday.', $back);
+            if (q_val('SELECT COUNT(*) FROM leave_requests WHERE user_id=? AND status="approved" AND ? BETWEEN from_date AND end_date', [$emp['id'], $date])) done(false, 'The employee is on approved leave that day.', $back);
+            $bal = weekoff_balance($emp, substr($date, 0, 7));
+            if (!is_weekoff((int)$emp['id'], $date) && $bal['left'] < 1) done(false, 'No week offs left for ' . date('F Y', strtotime($date)) . '.', $back);
+        }
 
         $pdo = db(); $pdo->beginTransaction();
         try {
@@ -206,7 +249,9 @@ switch ($do) {
                 q('DELETE FROM punch_events WHERE user_id=? AND work_date=?', [$emp['id'], $date]);
                 q('DELETE FROM attendance WHERE user_id=? AND work_date=?', [$emp['id'], $date]);
                 $summary = 'Marked absent';
+                if ($status === 'weekoff') { q('INSERT IGNORE INTO week_offs (user_id, off_date) VALUES (?,?)', [$emp['id'], $date]); $summary = 'Marked week off'; }
             }
+            if ($status !== 'weekoff') q('DELETE FROM week_offs WHERE user_id=? AND off_date=?', [$emp['id'], $date]);
             // an admin edit settles any pending regularization request for that day
             q('UPDATE regularizations SET status="approved", reviewed_by=?, reviewed_at=NOW(), review_note="Resolved by administrator edit" WHERE user_id=? AND work_date=? AND status="pending"', [$user['id'], $emp['id'], $date]);
             q('INSERT INTO activity_log (user_id, icon, title, detail, created_at) VALUES (?,?,?,?,NOW())', [$emp['id'], 'check', 'Attendance edited by administrator', fmt_date($date, 'M d, Y') . ": $summary. Reason: $reason"]);

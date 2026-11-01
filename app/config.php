@@ -13,7 +13,7 @@ return [
     'upload_dir'  => dirname(__DIR__) . '/storage/uploads',
     'max_upload'  => 10 * 1024 * 1024,
     'allowed_ext' => ['pdf', 'png', 'jpg', 'jpeg'],
-    'weekoff_per_month' => 4,               // week offs credited each month (max 1 per ISO week); unused ones carry over
+    'weekoff_per_month' => 4,               // week offs credited each month (no weekly cap, only the balance); unused ones carry over
     'weekoff_start'   => '2026-10',         // first month credits start accruing (earlier months are not back-filled)
     'session_hours_remember' => 12,
     'session_idle_minutes'   => 60,

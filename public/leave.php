@@ -59,10 +59,10 @@ render_header('Leave Application', 'leave', $user);
     <div class="big"><?= $wb['left'] ?> <small>/ <?= $wb['total'] ?> days left</small></div>
     <p class="muted" style="font-size:12.5px"><?= $wb['used'] ?> used this month<?= $wb['carry'] ? ' · ' . $wb['carry'] . ' carried over' : '' ?></p>
     <div class="meter" style="margin-top:14px"><i style="width:<?= $wb['total'] ? round($wb['left'] / $wb['total'] * 100) : 0 ?>%;background:var(--blue)"></i></div>
-    <div class="lt-foot"><span><?= $wb['per_month'] ?> new each month · max 1 per week</span><b>Resets <?= e(date('M j', strtotime('first day of next month'))) ?></b></div>
+    <div class="lt-foot"><span><?= $wb['per_month'] ?> new each month · use them any time, as long as the balance lasts</span><b>Resets <?= e(date('M j', strtotime('first day of next month'))) ?></b></div>
   </div>
   <div class="card lt-card apply-card" style="border-top-color:var(--brand)">
-    <div class="lt-top"><h3><?= icon('calendar', 20) ?> <span>Time Off</span></h3></div>
+    <div class="lt-top"><h3><?= icon('calendar', 20) ?> <span>Leave Request</span></h3></div>
     <p class="muted" style="font-size:12.5px;margin:6px 0 16px">Submit an approval request to your reporting line manager.</p>
     <button type="button" class="btn btn-brand btn-block" data-open="#leaveDlg"><?= icon('send', 16) ?> Apply for Leave</button>
   </div>

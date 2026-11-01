@@ -274,10 +274,9 @@ function weekoff_check(array $user, string $date): ?string
     if (day_events($uid, $date)) return 'You have already punched in today.';
     if (holidays_between($date, $date)) return 'Today is a company holiday.';
     if (q_val('SELECT COUNT(*) FROM leave_requests WHERE user_id=? AND status IN ("approved","pending") AND ? BETWEEN from_date AND end_date', [$uid, $date])) return 'You have a leave request covering today.';
-    $mon = date('Y-m-d', strtotime('monday this week', strtotime($date)));
-    $sun = date('Y-m-d', strtotime($mon . ' +6 days'));
-    if (q_val('SELECT COUNT(*) FROM week_offs WHERE user_id=? AND off_date BETWEEN ? AND ?', [$uid, $mon, $sun])) return 'You have already taken your week off for this week (1 per week).';
-    if (weekoff_balance($user, substr($date, 0, 7))['left'] < 1) return 'No week offs left this month.';
+    $bal = weekoff_balance($user, substr($date, 0, 7));
+    if ($bal['left'] < 1) return 'No week offs left this month.';
+    // no weekly cap: in an emergency several can be taken in the same week, as long as the month's balance (monthly credit + carry) lasts
     return null;
 }
 
